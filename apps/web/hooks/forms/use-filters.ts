@@ -13,7 +13,7 @@ interface UseListFiltersReturn<T> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function useListFilters<T extends Record<string, any>>(
   items: T[],
-  searchFields: (keyof T)[]
+  searchFields: (keyof T)[],
 ): UseListFiltersReturn<T> {
   const [searchTerm, setSearchTerm] = useState('')
   const [filters, setFilters] = useState<Record<string, string>>({})

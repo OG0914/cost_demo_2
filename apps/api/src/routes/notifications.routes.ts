@@ -1,11 +1,53 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { prisma, type NotificationStatus } from '@cost/database'
+import {
+  notificationSchema,
+  errorResponseSchema,
+  paginatedMetaSchema,
+  uuidParamSchema,
+  paginationQuerySchema,
+} from '../lib/swagger-schemas.js'
+
+const notificationQuerySchema = {
+  type: 'object',
+  properties: {
+    ...paginationQuerySchema.properties,
+    status: { type: 'string', enum: ['pending', 'processed'], description: '状态筛选' },
+  },
+} as const
 
 export const notificationRoutes = async (app: FastifyInstance) => {
   const getUserId = (request: FastifyRequest) => request.user.userId
 
   // GET /api/v1/notifications
-  app.get('/', { onRequest: [app.authenticate] }, async (request) => {
+  app.get('/', {
+    onRequest: [app.authenticate],
+    schema: {
+      tags: ['Notifications'],
+      summary: '获取通知列表',
+      description: '获取所有通知的列表（分页、筛选）',
+      security: [{ bearerAuth: [] }],
+      querystring: notificationQuerySchema,
+      response: {
+        200: {
+          description: '成功获取通知列表',
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'array',
+              items: notificationSchema,
+            },
+            meta: paginatedMetaSchema,
+          },
+        },
+        401: {
+          description: '未授权',
+          ...errorResponseSchema,
+        },
+      },
+    },
+  }, async (request) => {
     const { page = '1', pageSize = '20', status = '' } = request.query as Record<string, string>
 
     const skip = (parseInt(page, 10) - 1) * parseInt(pageSize, 10)
@@ -42,7 +84,34 @@ export const notificationRoutes = async (app: FastifyInstance) => {
   })
 
   // GET /api/v1/notifications/unread-count
-  app.get('/unread-count', { onRequest: [app.authenticate] }, async () => {
+  app.get('/unread-count', {
+    onRequest: [app.authenticate],
+    schema: {
+      tags: ['Notifications'],
+      summary: '获取未读通知数量',
+      description: '获取待处理通知的数量',
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: {
+          description: '成功获取未读数量',
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'object',
+              properties: {
+                count: { type: 'integer', description: '未读通知数量' },
+              },
+            },
+          },
+        },
+        401: {
+          description: '未授权',
+          ...errorResponseSchema,
+        },
+      },
+    },
+  }, async () => {
     const count = await prisma.notification.count({
       where: { status: 'pending' as NotificationStatus },
     })
@@ -51,7 +120,38 @@ export const notificationRoutes = async (app: FastifyInstance) => {
   })
 
   // PUT /api/v1/notifications/:id/process
-  app.put('/:id/process', { onRequest: [app.authenticate] }, async (request, reply) => {
+  app.put('/:id/process', {
+    onRequest: [app.authenticate],
+    schema: {
+      tags: ['Notifications'],
+      summary: '处理通知',
+      description: '将通知标记为已处理',
+      security: [{ bearerAuth: [] }],
+      params: uuidParamSchema,
+      response: {
+        200: {
+          description: '通知处理成功',
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: notificationSchema,
+          },
+        },
+        400: {
+          description: '通知已处理',
+          ...errorResponseSchema,
+        },
+        401: {
+          description: '未授权',
+          ...errorResponseSchema,
+        },
+        404: {
+          description: '通知不存在',
+          ...errorResponseSchema,
+        },
+      },
+    },
+  }, async (request, reply) => {
     const userId = getUserId(request)
     const { id } = request.params as { id: string }
 

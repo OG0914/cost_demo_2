@@ -30,8 +30,8 @@ import {
   Cell,
 } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { useDashboard } from '@/hooks/use-dashboard'
-import { useQuotations } from '@/hooks/use-quotations'
+import { useDashboard } from '@/hooks/api/use-dashboard'
+import { useQuotations } from '@/hooks/api/use-quotations'
 
 const statusLabels: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
   draft: { label: '草稿', variant: 'secondary' },

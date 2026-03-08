@@ -1,4 +1,6 @@
 import axios, { AxiosError, AxiosInstance } from 'axios'
+import axiosRetry from 'axios-retry'
+import { toast } from 'sonner'
 import type {
   ApiResponse,
   LoginRequest,
@@ -35,6 +37,7 @@ import type {
   CreateStandardCostRequest,
   DashboardStatsDto,
 } from '@cost/shared-types'
+import { parseApiError, isRetryableError, ErrorCode } from './error-handler'
 
 // 创建 axios 实例
 const apiClient: AxiosInstance = axios.create({
@@ -45,6 +48,24 @@ const apiClient: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
   timeout: 30000,
+})
+
+// 配置请求重试
+axiosRetry(apiClient, {
+  retries: 3, // 最多重试 3 次
+  retryDelay: (retryCount) => {
+    // 指数退避策略：1s, 2s, 4s
+    const delay = Math.pow(2, retryCount - 1) * 1000
+    return delay
+  },
+  retryCondition: (error: AxiosError) => {
+    // 只对特定错误进行重试
+    return isRetryableError(error)
+  },
+  onRetry: (retryCount, error, requestConfig) => {
+    const url = requestConfig.url || 'unknown'
+    console.warn(`[API Retry] ${url} - Attempt ${retryCount}/3`, error.message)
+  },
 })
 
 // 请求拦截器 - 添加 token
@@ -65,16 +86,71 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response.data,
   (error: AxiosError<ApiResponse<unknown>>) => {
-    if (error.response?.status === 401) {
+    const appError = parseApiError(error)
+
+    // 处理认证错误
+    if (appError.code === ErrorCode.UNAUTHORIZED) {
       // Token 过期或无效，清除本地存储并重定向到登录页
       if (typeof window !== 'undefined') {
         localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        toast.error('登录已过期，请重新登录')
         window.location.href = '/login'
       }
+      return Promise.reject(appError)
     }
 
-    const errorMessage = error.response?.data?.error?.message || '网络请求失败'
-    return Promise.reject(new Error(errorMessage))
+    // 处理权限错误
+    if (appError.code === ErrorCode.FORBIDDEN || appError.code === ErrorCode.INSUFFICIENT_PERMISSIONS) {
+      toast.error('您没有权限执行此操作')
+      return Promise.reject(appError)
+    }
+
+    // 处理验证错误
+    if (appError.code === ErrorCode.VALIDATION_ERROR) {
+      const details = appError.details as Array<{ field?: string; message: string }> | undefined
+      if (details && Array.isArray(details) && details.length > 0) {
+        details.forEach((detail) => {
+          toast.error(detail.message || '输入数据验证失败')
+        })
+      } else {
+        toast.error(appError.message)
+      }
+      return Promise.reject(appError)
+    }
+
+    // 处理数据库冲突错误
+    if (appError.code === ErrorCode.DB_UNIQUE_VIOLATION) {
+      toast.error('数据已存在，请勿重复添加')
+      return Promise.reject(appError)
+    }
+
+    if (appError.code === ErrorCode.DB_FOREIGN_KEY_VIOLATION) {
+      toast.error('数据关联错误，请先删除关联数据')
+      return Promise.reject(appError)
+    }
+
+    // 处理业务规则错误
+    if (appError.code === ErrorCode.BUSINESS_RULE_VIOLATION) {
+      toast.error(appError.message)
+      return Promise.reject(appError)
+    }
+
+    // 处理网络/超时错误（重试后仍然失败）
+    if (appError.type === 'network' || appError.type === 'timeout') {
+      toast.error('网络连接失败，请检查网络后重试')
+      return Promise.reject(appError)
+    }
+
+    // 处理服务器错误
+    if (appError.type === 'server') {
+      toast.error('服务器繁忙，请稍后重试')
+      return Promise.reject(appError)
+    }
+
+    // 其他错误显示通用消息
+    toast.error(appError.message || '操作失败，请稍后重试')
+    return Promise.reject(appError)
   }
 )
 

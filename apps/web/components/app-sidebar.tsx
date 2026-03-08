@@ -44,7 +44,7 @@ import {
 } from '@/components/ui/collapsible'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { useAuth } from '@/hooks/use-auth'
+import { useAuth } from '@/hooks/api/use-auth'
 
 const roleLabels: Record<string, string> = {
   admin: '管理员',

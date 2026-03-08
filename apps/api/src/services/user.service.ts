@@ -2,6 +2,8 @@ import bcrypt from 'bcryptjs'
 import type { Prisma, Role, UserStatus } from '@cost/database'
 import { BaseService } from './base.service.js'
 import { userRepository, type PaginationParams, type PaginatedResult } from '../repositories/user.repository.js'
+import { createCacheService, CacheNamespaces } from './cache.service.js'
+import { redisConfig } from '../config/redis.js'
 import type { User } from '@cost/database'
 
 export interface CreateUserInput {
@@ -33,13 +35,47 @@ const USER_SELECT_FIELDS = {
 
 type UserResult = Pick<User, keyof typeof USER_SELECT_FIELDS>
 
+// 缓存服务实例
+const userCache = createCacheService(CacheNamespaces.USER)
+
+// 生成列表缓存键
+function generateListCacheKey(params: PaginationParams): string {
+  const key = JSON.stringify(params)
+  return `list:${Buffer.from(key).toString('base64')}`
+}
+
+// 生成单条记录缓存键
+function generateDetailCacheKey(id: string): string {
+  return `detail:${id}`
+}
+
 export class UserService extends BaseService {
   async getList(params: PaginationParams): Promise<PaginatedResult<UserResult>> {
-    return userRepository.findMany(params)
+    const cacheKey = generateListCacheKey(params)
+
+    const cached = await userCache.get<PaginatedResult<UserResult>>(cacheKey)
+    if (cached) {
+      return cached
+    }
+
+    const result = await userRepository.findMany(params)
+    await userCache.set(cacheKey, result, redisConfig.ttl.baseData)
+    return result
   }
 
   async getById(id: string): Promise<UserResult | null> {
-    return userRepository.findById(id)
+    const cacheKey = generateDetailCacheKey(id)
+
+    const cached = await userCache.get<UserResult>(cacheKey)
+    if (cached) {
+      return cached
+    }
+
+    const user = await userRepository.findById(id)
+    if (user) {
+      await userCache.set(cacheKey, user, redisConfig.ttl.baseData)
+    }
+    return user
   }
 
   async create(input: CreateUserInput): Promise<UserResult> {
@@ -54,7 +90,12 @@ export class UserService extends BaseService {
       status: input.status || 'active',
     }
 
-    return userRepository.create(createData)
+    const result = await userRepository.create(createData)
+
+    // 清除列表缓存
+    await userCache.delPattern('list:*')
+
+    return result
   }
 
   async update(id: string, input: UpdateUserInput): Promise<UserResult> {
@@ -65,11 +106,21 @@ export class UserService extends BaseService {
       status: input.status,
     }
 
-    return userRepository.update(id, updateData)
+    const result = await userRepository.update(id, updateData)
+
+    // 清除相关缓存
+    await userCache.del(generateDetailCacheKey(id))
+    await userCache.delPattern('list:*')
+
+    return result
   }
 
   async delete(id: string): Promise<void> {
-    return userRepository.delete(id)
+    await userRepository.delete(id)
+
+    // 清除相关缓存
+    await userCache.del(generateDetailCacheKey(id))
+    await userCache.delPattern('list:*')
   }
 }
 

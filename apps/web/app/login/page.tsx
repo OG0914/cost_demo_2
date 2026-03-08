@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
-import { useAuth } from '@/hooks/use-auth'
+import { useAuth } from '@/hooks/api/use-auth'
 import { Calculator, Eye, EyeOff, Loader2, Shield, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 

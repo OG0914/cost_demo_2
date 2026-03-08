@@ -56,7 +56,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
 import { materials } from '@/lib/data'
-import { useListFilters } from '@/hooks/use-filters'
+import { useListFilters } from '@/hooks/forms/use-filters'
 
 const categories = ['半面罩类', '口罩类', '配件类', '包装类']
 const units = ['个', '码', 'KG', '套', '卷', '包']

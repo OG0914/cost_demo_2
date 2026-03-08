@@ -5,6 +5,7 @@ import './globals.css'
 
 import { Toaster } from '@/components/ui/sonner'
 import { QueryProvider } from '@/providers/query-provider'
+import { ErrorBoundary } from '@/components/error-boundary'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
@@ -21,10 +22,12 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body className={`${inter.variable} font-sans antialiased`}>
-        <QueryProvider>
-          {children}
-        </QueryProvider>
-        <Toaster />
+        <ErrorBoundary>
+          <QueryProvider>
+            {children}
+          </QueryProvider>
+          <Toaster />
+        </ErrorBoundary>
         <Analytics />
       </body>
     </html>

@@ -2,10 +2,36 @@ import type { FastifyInstance } from 'fastify'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@cost/database'
 import { loginSchema } from '../lib/schemas.js'
+import { loginRequestSchema, loginResponseSchema, errorResponseSchema, userSchema } from '../lib/swagger-schemas.js'
 
 export const authRoutes = async (app: FastifyInstance) => {
   // POST /api/v1/auth/login
-  app.post('/login', async (request, reply) => {
+  app.post('/login', {
+    schema: {
+      tags: ['Auth'],
+      summary: '用户登录',
+      description: '使用用户名和密码登录，返回 JWT token',
+      body: loginRequestSchema,
+      response: {
+        200: {
+          description: '登录成功',
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: loginResponseSchema,
+          },
+        },
+        400: {
+          description: '验证错误',
+          ...errorResponseSchema,
+        },
+        401: {
+          description: '认证失败',
+          ...errorResponseSchema,
+        },
+      },
+    },
+  }, async (request, reply) => {
     const validation = loginSchema.safeParse(request.body)
     if (!validation.success) {
       return reply.code(400).send({
@@ -56,7 +82,29 @@ export const authRoutes = async (app: FastifyInstance) => {
   })
 
   // GET /api/v1/auth/me
-  app.get('/me', { onRequest: [app.authenticate] }, async (request) => {
+  app.get('/me', {
+    onRequest: [app.authenticate],
+    schema: {
+      tags: ['Auth'],
+      summary: '获取当前用户信息',
+      description: '获取当前登录用户的详细信息',
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: {
+          description: '成功获取用户信息',
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: userSchema,
+          },
+        },
+        401: {
+          description: '未授权',
+          ...errorResponseSchema,
+        },
+      },
+    },
+  }, async (request) => {
     const userId = request.user.userId
 
     const user = await prisma.user.findUnique({
@@ -76,7 +124,30 @@ export const authRoutes = async (app: FastifyInstance) => {
   })
 
   // POST /api/v1/auth/logout
-  app.post('/logout', { onRequest: [app.authenticate] }, async () => {
+  app.post('/logout', {
+    onRequest: [app.authenticate],
+    schema: {
+      tags: ['Auth'],
+      summary: '用户登出',
+      description: '用户登出（客户端需清除 token）',
+      security: [{ bearerAuth: [] }],
+      response: {
+        200: {
+          description: '登出成功',
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'object',
+              properties: {
+                message: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async () => {
     return { success: true, data: { message: 'Logged out successfully' } }
   })
 }
