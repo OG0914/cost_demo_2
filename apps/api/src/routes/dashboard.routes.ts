@@ -1,22 +1,11 @@
 import type { FastifyInstance } from 'fastify'
 import { prisma } from '@cost/database'
-import { createCacheService, CacheNamespaces } from '../services/cache.service.js'
-import { redisConfig } from '../config/redis.js'
 import {
   dashboardStatsSchema,
   errorResponseSchema,
 } from '../lib/swagger-schemas.js'
 
-// 仪表盘缓存服务
-const dashboardCache = createCacheService(CacheNamespaces.DASHBOARD)
-
-// 生成缓存键
-function generateStatsCacheKey(): string {
-  const today = new Date().toISOString().split('T')[0] // 按天缓存
-  return `stats:${today}`
-}
-
-// 获取仪表盘统计数据（内部实现）
+// 获取仪表盘统计数据
 async function fetchDashboardStats() {
   // 获取基础统计数据
   const [
@@ -134,18 +123,8 @@ export const dashboardRoutes = async (app: FastifyInstance) => {
         },
       },
     },
-  }, async (request, reply) => {
-    const cacheKey = generateStatsCacheKey()
-
-    const stats = await dashboardCache.getOrSet(
-      cacheKey,
-      () => fetchDashboardStats(),
-      redisConfig.ttl.dashboard
-    )
-
-    // 检查是否来自缓存
-    const isCached = await dashboardCache.exists(cacheKey)
-    reply.header('X-Cache', isCached ? 'HIT' : 'MISS')
+  }, async () => {
+    const stats = await fetchDashboardStats()
 
     return {
       success: true,

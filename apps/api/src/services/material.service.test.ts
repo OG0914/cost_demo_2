@@ -31,33 +31,6 @@ vi.mock('@cost/database', () => ({
   PrismaClient: vi.fn(),
 }))
 
-// Mock cache service
-vi.mock('./cache.service.js', () => ({
-  createCacheService: () => ({
-    get: vi.fn().mockResolvedValue(null),
-    set: vi.fn().mockResolvedValue(undefined),
-    del: vi.fn().mockResolvedValue(undefined),
-    delPattern: vi.fn().mockResolvedValue(undefined),
-    clear: vi.fn().mockResolvedValue(undefined),
-  }),
-  CacheNamespaces: {
-    MATERIAL: 'material',
-  },
-}))
-
-// Mock redis config
-vi.mock('../config/redis.js', () => ({
-  redisConfig: {
-    enabled: false,
-    url: 'redis://localhost:6379',
-    ttl: {
-      base: 300,
-      list: 60,
-      detail: 300,
-    },
-  },
-}))
-
 describe('MaterialService', () => {
   let service: MaterialService
 

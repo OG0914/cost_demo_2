@@ -6,8 +6,6 @@ import swaggerUi from '@fastify/swagger-ui'
 import { routes } from './routes/index.js'
 import { errorHandler } from './plugins/error-handler.js'
 import { requestLogger } from './plugins/logger.js'
-import cachePlugin from './plugins/cache.js'
-import { closeRedisConnection } from './config/redis.js'
 import type { FastifyRequest, FastifyReply } from 'fastify'
 
 const app = fastify({
@@ -87,7 +85,7 @@ async function init() {
   })
 
   // Register plugins
-  await app.register(cachePlugin) // 缓存插件
+  // await app.register(cachePlugin) // 缓存插件已禁用（无需 Redis）
 
   await app.register(cors, {
     origin: process.env.CORS_ORIGIN || 'http://localhost:3002',
@@ -163,14 +161,12 @@ init()
 // Handle graceful shutdown
 process.on('SIGTERM', async () => {
   app.log.info('SIGTERM received, closing server...')
-  await closeRedisConnection() // 关闭 Redis 连接
   await app.close()
   process.exit(0)
 })
 
 process.on('SIGINT', async () => {
   app.log.info('SIGINT received, closing server...')
-  await closeRedisConnection() // 关闭 Redis 连接
   await app.close()
   process.exit(0)
 })

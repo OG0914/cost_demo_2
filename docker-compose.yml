@@ -1,24 +1,10 @@
+# Docker Compose 配置
+# 当前无服务配置（Redis 已移除，使用本地 PostgreSQL）
+
 version: '3.8'
 
 services:
-  redis:
-    image: redis:7-alpine
-    container_name: cost-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 3
-    restart: unless-stopped
-    networks:
-      - cost-network
-
-  # PostgreSQL 数据库（如果项目中使用）
+  # PostgreSQL 数据库（可选 - 如果使用本地数据库则不需要）
   # postgres:
   #   image: postgres:15-alpine
   #   container_name: cost-postgres
@@ -31,13 +17,6 @@ services:
   #   volumes:
   #     - postgres-data:/var/lib/postgresql/data
   #   restart: unless-stopped
-  #   networks:
-  #     - cost-network
 
-volumes:
-  redis-data:
-  # postgres-data:
-
-networks:
-  cost-network:
-    driver: bridge
+# volumes:
+#   postgres-data:
