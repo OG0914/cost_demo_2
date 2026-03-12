@@ -12,7 +12,10 @@
       "Bash(tasklist:*)",
       "Bash(wmic process:*)",
       "Bash(npx kill-port:*)",
-      "Bash(redis-cli:*)"
+      "Bash(redis-cli:*)",
+      "Bash(find /e/desktop/cost_demo_2 -name \"*.env*\" -type f 2>/dev/null | head -20)",
+      "Bash(psql --version 2>/dev/null || echo \"psql not found, checking pg_dump...\")",
+      "Bash(cd E:/desktop/cost_demo_2 && pnpm install pg @types/pg uuid @types/uuid dotenv @types/dotenv --save-dev 2>&1 | tail -5)"
     ]
   }
 }

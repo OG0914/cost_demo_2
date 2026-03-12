@@ -1,0 +1,126 @@
+{
+  "database": "cost_analysis",
+  "generatedAt": "2026-03-12T06:27:34.519Z",
+  "tables": [
+    {
+      "table": "comments",
+      "count": 4
+    },
+    {
+      "table": "customers",
+      "count": 16
+    },
+    {
+      "table": "material_price_changes",
+      "count": 3
+    },
+    {
+      "table": "materials",
+      "count": 50
+    },
+    {
+      "table": "migrations",
+      "count": 24
+    },
+    {
+      "table": "model_bom_materials",
+      "count": 90
+    },
+    {
+      "table": "model_images",
+      "count": 4
+    },
+    {
+      "table": "models",
+      "count": 23
+    },
+    {
+      "table": "notifications",
+      "count": 0
+    },
+    {
+      "table": "packaging",
+      "count": 0
+    },
+    {
+      "table": "packaging_configs",
+      "count": 63
+    },
+    {
+      "table": "packaging_materials",
+      "count": 92
+    },
+    {
+      "table": "permission_history",
+      "count": 2
+    },
+    {
+      "table": "permissions",
+      "count": 28
+    },
+    {
+      "table": "price_history",
+      "count": 16
+    },
+    {
+      "table": "process_config_history",
+      "count": 8
+    },
+    {
+      "table": "process_configs",
+      "count": 322
+    },
+    {
+      "table": "processes",
+      "count": 0
+    },
+    {
+      "table": "quotation_custom_fees",
+      "count": 0
+    },
+    {
+      "table": "quotation_items",
+      "count": 559
+    },
+    {
+      "table": "quotations",
+      "count": 29
+    },
+    {
+      "table": "regulations",
+      "count": 3
+    },
+    {
+      "table": "review_history",
+      "count": 12
+    },
+    {
+      "table": "role_permissions",
+      "count": 51
+    },
+    {
+      "table": "roles",
+      "count": 6
+    },
+    {
+      "table": "standard_cost_updates",
+      "count": 0
+    },
+    {
+      "table": "standard_costs",
+      "count": 1
+    },
+    {
+      "table": "system_config",
+      "count": 34
+    },
+    {
+      "table": "user_notifications",
+      "count": 0
+    },
+    {
+      "table": "users",
+      "count": 8
+    }
+  ]
+}

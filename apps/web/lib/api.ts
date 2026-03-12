@@ -42,7 +42,7 @@ import { parseApiError, isRetryableError, ErrorCode } from './error-handler'
 // 创建 axios 实例
 const apiClient: AxiosInstance = axios.create({
   baseURL: typeof window === 'undefined'
-    ? process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003/api/v1'
+    ? process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'
     : '/api/v1', // 浏览器端使用相对路径，通过 Next.js rewrite 代理
   headers: {
     'Content-Type': 'application/json',

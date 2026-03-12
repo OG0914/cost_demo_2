@@ -43,7 +43,7 @@ async function init() {
       },
       servers: [
         {
-          url: 'http://localhost:3003',
+          url: 'http://localhost:3000',
           description: 'Development server',
         },
       ],
@@ -88,7 +88,7 @@ async function init() {
   // await app.register(cachePlugin) // 缓存插件已禁用（无需 Redis）
 
   await app.register(cors, {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3002',
+    origin: process.env.CORS_ORIGIN || 'http://localhost:5174',
     credentials: true,
   })
 
@@ -144,7 +144,7 @@ async function init() {
 
   // Start server
   try {
-    const port = parseInt(process.env.PORT || '3003', 10)
+    const port = parseInt(process.env.PORT || '3000', 10)
     const host = process.env.HOST || '0.0.0.0'
 
     await app.listen({ port, host })

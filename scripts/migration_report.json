@@ -1,0 +1,109 @@
+{
+  "timestamp": "2026-03-12T06:50:20.488Z",
+  "options": {
+    "batchSize": 1000,
+    "enableTransaction": true,
+    "skipOnError": true,
+    "dryRun": false,
+    "logLevel": "info"
+  },
+  "stats": [
+    {
+      "table": "users",
+      "oldCount": 8,
+      "newCount": 2,
+      "success": true,
+      "duration": 67
+    },
+    {
+      "table": "regulations",
+      "oldCount": 3,
+      "newCount": 0,
+      "success": false,
+      "duration": 16
+    },
+    {
+      "table": "materials",
+      "oldCount": 50,
+      "newCount": 50,
+      "success": true,
+      "duration": 1156
+    },
+    {
+      "table": "customers",
+      "oldCount": 16,
+      "newCount": 0,
+      "success": false,
+      "duration": 28
+    },
+    {
+      "table": "models",
+      "oldCount": 23,
+      "newCount": 0,
+      "success": false,
+      "duration": 36
+    },
+    {
+      "table": "bom_materials",
+      "oldCount": 90,
+      "newCount": 0,
+      "success": false,
+      "duration": 124
+    },
+    {
+      "table": "packaging_configs",
+      "oldCount": 63,
+      "newCount": 0,
+      "success": false,
+      "duration": 82
+    },
+    {
+      "table": "process_configs",
+      "oldCount": 322,
+      "newCount": 0,
+      "success": false,
+      "duration": 350
+    },
+    {
+      "table": "packaging_materials",
+      "oldCount": 92,
+      "newCount": 0,
+      "success": false,
+      "duration": 93
+    },
+    {
+      "table": "quotations",
+      "oldCount": 29,
+      "newCount": 0,
+      "success": false,
+      "duration": 36
+    },
+    {
+      "table": "standard_costs",
+      "oldCount": 1,
+      "newCount": 0,
+      "success": false,
+      "duration": 9
+    },
+    {
+      "table": "notifications",
+      "oldCount": 0,
+      "newCount": 0,
+      "success": true,
+      "duration": 3
+    },
+    {
+      "table": "system_config",
+      "oldCount": 34,
+      "newCount": 0,
+      "success": false,
+      "duration": 35
+    }
+  ],
+  "summary": {
+    "totalTables": 13,
+    "successTables": 3,
+    "totalOld": 731,
+    "totalNew": 52
+  }
+}
