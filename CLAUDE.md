@@ -261,6 +261,22 @@ expect(mockReply.send).toHaveBeenCalledWith(
 
 ## Key Conventions
 
+### Commit Rules
+
+**⚠️ 重要：每次 commit 前必须经过 Lucas 同意！**
+
+执行 `git commit` 前必须：
+1. 向 Lucas 展示即将提交的文件列表 (`git diff --cached --name-only`)
+2. 说明 commit 的类型和内容
+3. 获得 Lucas 明确确认后方可执行
+
+**禁止行为：**
+- 未经同意直接执行 commit
+- 使用 `--no-verify` 跳过 hooks
+- 强制推送 (`--force`) 到 main 分支
+
+---
+
 ### Response Format
 
 统一 API 响应格式：
