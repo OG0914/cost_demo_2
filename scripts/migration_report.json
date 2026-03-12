@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-12T06:50:20.488Z",
+  "timestamp": "2026-03-12T07:23:19.553Z",
   "options": {
     "batchSize": 1000,
     "enableTransaction": true,
@@ -11,99 +11,99 @@
     {
       "table": "users",
       "oldCount": 8,
-      "newCount": 2,
+      "newCount": 8,
       "success": true,
-      "duration": 67
+      "duration": 163
     },
     {
       "table": "regulations",
       "oldCount": 3,
-      "newCount": 0,
-      "success": false,
-      "duration": 16
+      "newCount": 3,
+      "success": true,
+      "duration": 57
     },
     {
       "table": "materials",
       "oldCount": 50,
       "newCount": 50,
       "success": true,
-      "duration": 1156
+      "duration": 926
     },
     {
       "table": "customers",
       "oldCount": 16,
-      "newCount": 0,
-      "success": false,
-      "duration": 28
+      "newCount": 16,
+      "success": true,
+      "duration": 291
     },
     {
       "table": "models",
       "oldCount": 23,
-      "newCount": 0,
-      "success": false,
-      "duration": 36
+      "newCount": 23,
+      "success": true,
+      "duration": 425
     },
     {
       "table": "bom_materials",
       "oldCount": 90,
-      "newCount": 0,
-      "success": false,
-      "duration": 124
+      "newCount": 90,
+      "success": true,
+      "duration": 1845
     },
     {
       "table": "packaging_configs",
       "oldCount": 63,
-      "newCount": 0,
-      "success": false,
-      "duration": 82
+      "newCount": 63,
+      "success": true,
+      "duration": 1440
     },
     {
       "table": "process_configs",
       "oldCount": 322,
-      "newCount": 0,
-      "success": false,
-      "duration": 350
+      "newCount": 322,
+      "success": true,
+      "duration": 7618
     },
     {
       "table": "packaging_materials",
       "oldCount": 92,
-      "newCount": 0,
-      "success": false,
-      "duration": 93
+      "newCount": 92,
+      "success": true,
+      "duration": 2140
     },
     {
       "table": "quotations",
       "oldCount": 29,
       "newCount": 0,
       "success": false,
-      "duration": 36
+      "duration": 53
     },
     {
       "table": "standard_costs",
       "oldCount": 1,
-      "newCount": 0,
-      "success": false,
-      "duration": 9
+      "newCount": 1,
+      "success": true,
+      "duration": 30
     },
     {
       "table": "notifications",
       "oldCount": 0,
       "newCount": 0,
       "success": true,
-      "duration": 3
+      "duration": 4
     },
     {
       "table": "system_config",
       "oldCount": 34,
-      "newCount": 0,
-      "success": false,
-      "duration": 35
+      "newCount": 31,
+      "success": true,
+      "duration": 686
     }
   ],
   "summary": {
     "totalTables": 13,
-    "successTables": 3,
+    "successTables": 12,
     "totalOld": 731,
-    "totalNew": 52
+    "totalNew": 699
   }
 }

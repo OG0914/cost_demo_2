@@ -21,6 +21,8 @@ import {
   MIGRATION_ORDER,
   ENUM_MAPPINGS,
   SPECIAL_CONVERTERS,
+  DEFAULT_VALUES,
+  COMPUTED_FIELDS,
   getOldTableName,
   type MigrationOptions,
   DEFAULT_MIGRATION_OPTIONS,
@@ -140,20 +142,25 @@ function convertValue(
     return SPECIAL_CONVERTERS.array(value);
   }
 
-  // 枚举值转换
-  if (field === 'role' || field === 'status') {
-    const enumType = tableName === 'users' && field === 'role'
-      ? 'role'
-      : tableName === 'users' && field === 'status'
-        ? 'user_status'
-        : tableName === 'regulations' && field === 'status'
-          ? 'regulation_status'
-          : tableName === 'quotations' && field === 'status'
-            ? 'quotation_status'
-            : null;
-    if (enumType) {
-      return convertEnum(enumType, String(value));
+  // 处理布尔值转枚举（status 字段）
+  if (field === 'status') {
+    if (tableName === 'users' || tableName === 'regulations') {
+      // 旧库是布尔值 is_active，新库是枚举
+      if (typeof value === 'boolean') {
+        return value ? 'active' : 'inactive';
+      }
+      if (value === 'true' || value === 't') return 'active';
+      if (value === 'false' || value === 'f') return 'inactive';
+      return value;
     }
+    if (tableName === 'quotations') {
+      return convertEnum('quotation_status', String(value));
+    }
+  }
+
+  // 枚举值转换
+  if (field === 'role') {
+    return convertEnum('role', String(value));
   }
 
   if (field === 'sale_type') {
@@ -172,17 +179,14 @@ function convertValue(
     return convertEnum('notification_type', String(value));
   }
 
-  if (field === 'status' && tableName === 'notifications') {
-    return convertEnum('notification_status', String(value));
-  }
-
   return value;
 }
 
 /**
  * 构建INSERT语句
+ * 支持计算字段和默认值
  */
-function buildInsertSql(tableName: string, row: any): { sql: string; values: any[] } {
+function buildInsertSql(tableName: string, row: any, defaultUserId: string | null): { sql: string; values: any[] } {
   const fieldMapping = FIELD_MAPPINGS[tableName];
   if (!fieldMapping) {
     throw new Error(`未找到表 ${tableName} 的字段映射`);
@@ -193,13 +197,61 @@ function buildInsertSql(tableName: string, row: any): { sql: string; values: any
   const placeholders: string[] = [];
   let paramIndex = 1;
 
+  // 获取计算字段配置
+  const computedFields = COMPUTED_FIELDS[tableName] || {};
+  // 获取默认值配置
+  const defaultValues = DEFAULT_VALUES[tableName] || {};
+
   for (const [oldField, newField] of Object.entries(fieldMapping)) {
-    if (oldField in row) {
-      const convertedValue = convertValue(tableName, newField, row[oldField], row);
-      fields.push(`"${newField}"`);
-      values.push(convertedValue);
-      placeholders.push(`$${paramIndex++}`);
+    // 跳过空映射
+    if (!newField) continue;
+
+    let value: any;
+
+    // 检查是否是计算字段
+    if (newField in computedFields) {
+      value = computedFields[newField](row);
+    } else if (oldField in row) {
+      value = convertValue(tableName, newField, row[oldField], row);
+    } else {
+      // 字段在旧库不存在，使用默认值
+      const defaultValue = defaultValues[newField];
+      value = typeof defaultValue === 'function' ? defaultValue() : (defaultValue ?? null);
     }
+
+    // 特殊处理：created_by/updated_by 等字段使用默认用户ID
+    if ((newField === 'created_by' || newField === 'updated_by' || newField === 'set_by') && !value && defaultUserId) {
+      value = defaultUserId;
+    }
+
+    // 特殊处理：quotations 表的 customer_id 为空时使用默认客户
+    if (tableName === 'quotations' && newField === 'customer_id' && !value) {
+      value = DEFAULT_CUSTOMER_UUID;
+    }
+
+    // 处理 system_config 表的特殊逻辑
+    if (tableName === 'system_config') {
+      if (newField === 'value') {
+        value = SPECIAL_CONVERTERS.systemConfigValue(row.config_value);
+      }
+      if (newField === 'updated_at') {
+        value = row.updated_at || new Date().toISOString();
+      }
+      if (newField === 'updated_by') {
+        value = defaultUserId;
+      }
+    }
+
+    // 处理 regulations 表的 name 字段（如果 description 为空，使用原 name）
+    if (tableName === 'regulations' && newField === 'name') {
+      const oldDescription = row.description;
+      const oldName = row.name;
+      value = oldDescription || oldName || `REG-${row.id}`;
+    }
+
+    fields.push(`"${newField}"`);
+    values.push(value);
+    placeholders.push(`$${paramIndex++}`);
   }
 
   const sql = `INSERT INTO "${tableName}" (${fields.join(', ')}) VALUES (${placeholders.join(', ')})`;
@@ -209,11 +261,72 @@ function buildInsertSql(tableName: string, row: any): { sql: string; values: any
 /**
  * 迁移单个表
  */
+/**
+ * 默认客户UUID（用于关联没有 customer_id 的 quotations）
+ */
+const DEFAULT_CUSTOMER_UUID = '00000000-0000-0000-0000-000000000001';
+
+/**
+ * 创建默认客户（用于关联没有 customer_id 的记录）
+ */
+async function createDefaultCustomer(newClient: Client, defaultUserId: string | null): Promise<void> {
+  try {
+    // 检查默认客户是否已存在
+    const checkResult = await newClient.query(
+      `SELECT id FROM customers WHERE id = $1`,
+      [DEFAULT_CUSTOMER_UUID]
+    );
+    if (checkResult.rows.length > 0) {
+      return;
+    }
+
+    // 创建默认客户
+    await newClient.query(`
+      INSERT INTO customers (id, code, name, region, created_by, updated_by, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+    `, [
+      DEFAULT_CUSTOMER_UUID,
+      'UNKNOWN',
+      '未指定客户',
+      'Unknown',
+      defaultUserId,
+      defaultUserId
+    ]);
+    console.log('  已创建默认客户');
+  } catch (err) {
+    console.log('  警告: 创建默认客户失败', err);
+  }
+}
+
+/**
+ * 获取默认用户ID（用于填充 created_by/updated_by 等字段）
+ */
+async function getDefaultUserId(oldClient: Client, newClient: Client): Promise<string | null> {
+  try {
+    // 首先尝试找 admin 用户
+    const oldResult = await oldClient.query(
+      `SELECT id FROM users WHERE username = 'admin' OR role = 'admin' LIMIT 1`
+    );
+    if (oldResult.rows.length > 0) {
+      return intToUuid('users', oldResult.rows[0].id);
+    }
+    // 如果没有 admin，找第一个用户
+    const firstUser = await oldClient.query(`SELECT id FROM users ORDER BY id LIMIT 1`);
+    if (firstUser.rows.length > 0) {
+      return intToUuid('users', firstUser.rows[0].id);
+    }
+  } catch (err) {
+    console.log('  警告: 无法获取默认用户ID');
+  }
+  return null;
+}
+
 async function migrateTable(
   oldClient: Client,
   newClient: Client,
   tableName: string,
-  options: MigrationOptions
+  options: MigrationOptions,
+  defaultUserId: string | null
 ): Promise<MigrationStats> {
   const startTime = Date.now();
   const stat: MigrationStats = {
@@ -261,7 +374,7 @@ async function migrateTable(
             // 每条记录使用独立事务
             await newClient.query('BEGIN');
             try {
-              const { sql, values } = buildInsertSql(tableName, row);
+              const { sql, values } = buildInsertSql(tableName, row, defaultUserId);
               await newClient.query(sql, values);
               await newClient.query('COMMIT');
               migratedCount++;
@@ -290,7 +403,7 @@ async function migrateTable(
 
       // 验证新表数据量
       stat.newCount = await getTableCount(newClient, tableName);
-      stat.success = migratedCount > 0; // 只要有数据迁移成功就算成功
+      stat.success = migratedCount > 0 || stat.oldCount === 0; // 只要有数据迁移成功就算成功
 
       console.log(`  完成: ${migratedCount} 条记录, 新表: ${stat.newCount} 条${errorCount > 0 ? `, 跳过: ${errorCount}` : ''}`);
 
@@ -387,9 +500,16 @@ async function migrate(options: MigrationOptions = DEFAULT_MIGRATION_OPTIONS): P
       await clearNewDatabase(newClient);
     }
 
+    // 获取默认用户ID（用于填充 created_by/updated_by 等字段）
+    const defaultUserId = await getDefaultUserId(oldClient, newClient);
+    console.log(`  默认用户ID: ${defaultUserId || '未找到'}`);
+
+    // 创建默认客户
+    await createDefaultCustomer(newClient, defaultUserId);
+
     // 按顺序迁移表（每表独立事务）
     for (const tableName of MIGRATION_ORDER) {
-      const stat = await migrateTable(oldClient, newClient, tableName, options);
+      const stat = await migrateTable(oldClient, newClient, tableName, options, defaultUserId);
       stats.push(stat);
 
       if (!stat.success && !options.skipOnError) {
