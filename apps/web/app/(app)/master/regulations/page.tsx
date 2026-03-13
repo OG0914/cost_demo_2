@@ -49,18 +49,21 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
-import { regulations } from '@/lib/data'
+import { useRegulations } from '@/hooks/api/use-regulations'
+import { Skeleton } from '@/components/ui/skeleton'
+import type { Regulation } from '@cost/shared-types'
 
 export default function RegulationsPage() {
+  const { regulations, isLoading } = useRegulations()
   const [searchTerm, setSearchTerm] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [editingItem, setEditingItem] = useState<typeof regulations[0] | null>(null)
+  const [editingItem, setEditingItem] = useState<Regulation | null>(null)
   const [formData, setFormData] = useState({ name: '', description: '' })
 
-  const filteredRegulations = regulations.filter((r) =>
+  const filteredRegulations = (regulations ?? []).filter((r: Regulation) =>
     r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.description.toLowerCase().includes(searchTerm.toLowerCase())
+    (r.description || '').toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   const handleAdd = () => {
@@ -69,9 +72,9 @@ export default function RegulationsPage() {
     setDialogOpen(true)
   }
 
-  const handleEdit = (item: typeof regulations[0]) => {
+  const handleEdit = (item: Regulation) => {
     setEditingItem(item)
-    setFormData({ name: item.name, description: item.description })
+    setFormData({ name: item.name, description: item.description || '' })
     setDialogOpen(true)
   }
 
@@ -89,8 +92,16 @@ export default function RegulationsPage() {
     setDeleteDialogOpen(false)
   }
 
-  const handleToggleStatus = (item: typeof regulations[0]) => {
+  const handleToggleStatus = (item: Regulation) => {
     toast.success(item.status === 'active' ? '法规已禁用' : '法规已启用')
+  }
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-8">
+        <Skeleton className="h-96 w-full" />
+      </div>
+    )
   }
 
   return (
@@ -144,7 +155,7 @@ export default function RegulationsPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredRegulations.map((item) => (
+                  filteredRegulations.map((item: Regulation) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell className="text-muted-foreground">{item.description}</TableCell>

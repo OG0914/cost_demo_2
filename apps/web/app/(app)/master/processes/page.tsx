@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, Upload, Download, GripVertical } from 'lucide-react'
+import { Plus, MoreHorizontal, Pencil, Trash2, Upload, Download, GripVertical } from 'lucide-react'
 import {
   Card,
   CardContent,
@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
   TableBody,
@@ -54,35 +55,47 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
-import { models, packagingConfigs, processConfigs, getPackagingProcessConfigs } from '@/lib/data'
+import { usePackagingConfigs, useProcessConfigs } from '@/hooks/api'
+
+interface ProcessConfig {
+  id: string
+  name: string
+  price: number
+  unit: 'piece' | 'dozen'
+}
 
 export default function ProcessesPage() {
-  const [selectedModelId, setSelectedModelId] = useState<string>(models[0]?.id || '')
+  const [selectedModelId, setSelectedModelId] = useState<string>('')
   const [selectedPackagingId, setSelectedPackagingId] = useState<string>('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [editingItem, setEditingItem] = useState<typeof processConfigs[0] | null>(null)
+  const [editingItem, setEditingItem] = useState<ProcessConfig | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     price: '',
     unit: 'piece' as 'piece' | 'dozen',
   })
 
-  const selectedModel = models.find((m) => m.id === selectedModelId)
-  const modelPackagingConfigs = packagingConfigs.filter((p) => p.modelId === selectedModelId)
+  const { packagingConfigs, models, isLoading: isLoadingConfigs } = usePackagingConfigs(selectedModelId)
+
+  // 根据型号筛选包装配置
+  const modelPackagingConfigs = useMemo(() => {
+    if (!selectedModelId) return packagingConfigs
+    return packagingConfigs.filter((p: { modelId?: string }) => p.modelId === selectedModelId)
+  }, [packagingConfigs, selectedModelId])
 
   // Auto-select first packaging config when model changes
-  const currentPackagingId = selectedPackagingId && modelPackagingConfigs.some((p) => p.id === selectedPackagingId)
+  const currentPackagingId = selectedPackagingId && modelPackagingConfigs.some((p: { id: string }) => p.id === selectedPackagingId)
     ? selectedPackagingId
     : modelPackagingConfigs[0]?.id || ''
 
-  const selectedPackaging = packagingConfigs.find((p) => p.id === currentPackagingId)
-  const currentProcessConfigs = useMemo(
-    () => getPackagingProcessConfigs(currentPackagingId),
-    [currentPackagingId]
-  )
+  const selectedPackaging = modelPackagingConfigs.find((p: { id: string }) => p.id === currentPackagingId)
 
-  const totalProcessCost = currentProcessConfigs.reduce((sum, item) => {
+  const { processConfigs, isLoading: isLoadingProcesses, create, update, delete: deleteProcess } = useProcessConfigs(currentPackagingId)
+
+  const isLoading = isLoadingConfigs || isLoadingProcesses
+
+  const totalProcessCost = (processConfigs as ProcessConfig[]).reduce((sum: number, item: ProcessConfig) => {
     const cost = item.unit === 'dozen' ? item.price / 12 : item.price
     return sum + cost
   }, 0)
@@ -93,7 +106,7 @@ export default function ProcessesPage() {
     setDialogOpen(true)
   }
 
-  const handleEdit = (item: typeof processConfigs[0]) => {
+  const handleEdit = (item: ProcessConfig) => {
     setEditingItem(item)
     setFormData({
       name: item.name,
@@ -108,14 +121,56 @@ export default function ProcessesPage() {
       toast.error('请填写完整信息')
       return
     }
-    toast.success(editingItem ? '工序已更新' : '工序已添加')
+
+    const data = {
+      name: formData.name,
+      price: parseFloat(formData.price),
+      unit: formData.unit,
+    }
+
+    if (editingItem) {
+      update({ processId: editingItem.id, data })
+    } else {
+      create(data)
+    }
     setDialogOpen(false)
   }
 
   const handleDelete = () => {
-    toast.success('工序已删除')
+    if (editingItem) {
+      deleteProcess(editingItem.id)
+    }
     setDeleteDialogOpen(false)
     setEditingItem(null)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <Skeleton className="h-8 w-32" />
+          <Skeleton className="h-4 w-48 mt-2" />
+        </div>
+        <div className="grid gap-6 lg:grid-cols-4">
+          <Card className="lg:col-span-1">
+            <CardHeader>
+              <Skeleton className="h-6 w-24" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-48 w-full" />
+            </CardContent>
+          </Card>
+          <Card className="lg:col-span-3">
+            <CardHeader>
+              <Skeleton className="h-6 w-32" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-64 w-full" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -159,7 +214,7 @@ export default function ProcessesPage() {
                   <SelectValue placeholder="选择型号" />
                 </SelectTrigger>
                 <SelectContent>
-                  {models.map((m) => (
+                  {models.map((m: { id: string; name: string }) => (
                     <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -172,8 +227,8 @@ export default function ProcessesPage() {
                 {modelPackagingConfigs.length === 0 ? (
                   <p className="text-sm text-muted-foreground py-2">该型号暂无包装配置</p>
                 ) : (
-                  modelPackagingConfigs.map((config) => {
-                    const processCount = processConfigs.filter((p) => p.packagingConfigId === config.id).length
+                  modelPackagingConfigs.map((config: { id: string; name: string; packagingType?: string }) => {
+                    const processCount = (processConfigs as ProcessConfig[]).length
                     return (
                       <button
                         key={config.id}
@@ -184,7 +239,7 @@ export default function ProcessesPage() {
                       >
                         <div>
                           <p className="text-sm font-medium">{config.name}</p>
-                          <p className="text-xs text-muted-foreground">{config.packagingType}</p>
+                          <p className="text-xs text-muted-foreground">{config.packagingType || '-'}</p>
                         </div>
                         <span className="text-xs text-muted-foreground">{processCount}道工序</span>
                       </button>
@@ -202,10 +257,10 @@ export default function ProcessesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle>
-                  {selectedModel?.name} - {selectedPackaging?.name || '未选择'}
+                  {selectedModelId ? models.find((m: { id: string }) => m.id === selectedModelId)?.name : '选择型号'} - {selectedPackaging?.name || '未选择'}
                 </CardTitle>
                 <CardDescription>
-                  共 {currentProcessConfigs.length} 道工序，单件工序成本 ¥{totalProcessCost.toFixed(2)}
+                  共 {(processConfigs as ProcessConfig[]).length} 道工序，单件工序成本 ¥{totalProcessCost.toFixed(2)}
                 </CardDescription>
               </div>
               <Button onClick={handleAdd} disabled={!currentPackagingId}>
@@ -228,14 +283,14 @@ export default function ProcessesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {currentProcessConfigs.length === 0 ? (
+                  {(processConfigs as ProcessConfig[]).length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                         {currentPackagingId ? '暂无工序配置，点击"添加工序"开始配置' : '请先选择包装配置'}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    currentProcessConfigs.map((item) => (
+                    (processConfigs as ProcessConfig[]).map((item: ProcessConfig) => (
                       <TableRow key={item.id}>
                         <TableCell>
                           <GripVertical className="size-4 text-muted-foreground cursor-move" />
@@ -283,7 +338,7 @@ export default function ProcessesPage() {
               </Table>
             </div>
 
-            {currentProcessConfigs.length > 0 && (
+            {(processConfigs as ProcessConfig[]).length > 0 && (
               <div className="mt-4 flex justify-end">
                 <div className="rounded-lg bg-muted p-3 text-right">
                   <p className="text-sm text-muted-foreground">单件工序总成本</p>
@@ -301,7 +356,7 @@ export default function ProcessesPage() {
           <DialogHeader>
             <DialogTitle>{editingItem ? '编辑工序' : '添加工序'}</DialogTitle>
             <DialogDescription>
-              {selectedModel?.name} - {selectedPackaging?.name}
+              {selectedModelId ? models.find((m: { id: string }) => m.id === selectedModelId)?.name : '选择型号'} - {selectedPackaging?.name}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">

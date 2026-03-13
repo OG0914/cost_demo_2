@@ -7,13 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import {
-  quotations,
-  getQuotationWithDetails,
-  getModelBom,
-  getPackagingMaterials,
-  getPackagingProcessConfigs,
-} from '@/lib/data'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useQuotation } from '@/hooks/api'
 import type { QuotationStatus } from '@/lib/types'
 
 const statusConfig: Record<QuotationStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
@@ -36,9 +31,30 @@ const shippingTypeLabels = {
 
 export default function CostDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
-  const quotation = quotations.find((q) => q.id === id)
+  const { quotation: q, isLoading } = useQuotation(id)
 
-  if (!quotation) {
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Skeleton className="size-10" />
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+        </div>
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="space-y-6 lg:col-span-2">
+            <Skeleton className="h-48" />
+            <Skeleton className="h-64" />
+          </div>
+          <Skeleton className="h-96" />
+        </div>
+      </div>
+    )
+  }
+
+  if (!q) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
         <div className="text-center">
@@ -50,11 +66,6 @@ export default function CostDetailPage({ params }: { params: Promise<{ id: strin
       </div>
     )
   }
-
-  const q = getQuotationWithDetails(quotation)
-  const bom = getModelBom(q.modelId)
-  const packagingMaterials = getPackagingMaterials(q.packagingConfigId)
-  const processConfigs = getPackagingProcessConfigs(q.packagingConfigId)
 
   const canEdit = q.status === 'draft' || q.status === 'rejected'
   const canSubmit = q.status === 'draft' || q.status === 'rejected'
@@ -160,78 +171,57 @@ export default function CostDetailPage({ params }: { params: Promise<{ id: strin
             </CardContent>
           </Card>
 
-          {/* 原料清单 */}
+          {/* BOM和包材工序简化展示 */}
           <Card>
             <CardHeader>
-              <CardTitle>原料清单 (BOM)</CardTitle>
-              <CardDescription>产品物料构成</CardDescription>
+              <CardTitle>成本明细</CardTitle>
+              <CardDescription>各成本项明细</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="rounded-md border">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="px-3 py-2 text-left font-medium">料号</th>
-                      <th className="px-3 py-2 text-left font-medium">名称</th>
-                      <th className="px-3 py-2 text-right font-medium">用量</th>
-                      <th className="px-3 py-2 text-right font-medium">单价</th>
-                      <th className="px-3 py-2 text-right font-medium">小计</th>
+                      <th className="px-3 py-2 text-left font-medium">成本项目</th>
+                      <th className="px-3 py-2 text-right font-medium">金额</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {bom.map((item) => (
-                      <tr key={item.id} className="border-b last:border-0">
-                        <td className="px-3 py-2 text-muted-foreground">{item.material?.materialNo}</td>
-                        <td className="px-3 py-2">{item.material?.name}</td>
-                        <td className="px-3 py-2 text-right">{item.quantity} {item.material?.unit}</td>
-                        <td className="px-3 py-2 text-right">¥{item.material?.price.toFixed(2)}</td>
-                        <td className="px-3 py-2 text-right font-medium">
-                          ¥{((item.material?.price || 0) * item.quantity).toFixed(2)}
-                        </td>
+                    <tr className="border-b">
+                      <td className="px-3 py-2 text-muted-foreground">原料成本</td>
+                      <td className="px-3 py-2 text-right">¥{q.costs?.materialCost?.toLocaleString()}</td>
+                    </tr>
+                    <tr className="border-b">
+                      <td className="px-3 py-2 text-muted-foreground">包材成本</td>
+                      <td className="px-3 py-2 text-right">¥{q.costs?.packagingCost?.toLocaleString()}</td>
+                    </tr>
+                    <tr className="border-b">
+                      <td className="px-3 py-2 text-muted-foreground">工序成本</td>
+                      <td className="px-3 py-2 text-right">¥{q.costs?.processCost?.toLocaleString()}</td>
+                    </tr>
+                    <tr className="border-b">
+                      <td className="px-3 py-2 text-muted-foreground">运费</td>
+                      <td className="px-3 py-2 text-right">¥{q.costs?.shippingCost?.toLocaleString()}</td>
+                    </tr>
+                    <tr className="border-b">
+                      <td className="px-3 py-2 text-muted-foreground">管销费用</td>
+                      <td className="px-3 py-2 text-right">¥{q.costs?.adminFee?.toLocaleString()}</td>
+                    </tr>
+                    {q.saleType === 'domestic' && (
+                      <tr className="border-b">
+                        <td className="px-3 py-2 text-muted-foreground">增值税</td>
+                        <td className="px-3 py-2 text-right">¥{q.costs?.vat?.toLocaleString()}</td>
                       </tr>
-                    ))}
+                    )}
+                    <tr className="font-medium">
+                      <td className="px-3 py-2">总成本</td>
+                      <td className="px-3 py-2 text-right">¥{q.costs?.totalCost?.toLocaleString()}</td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
             </CardContent>
           </Card>
-
-          {/* 包材与工序 */}
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>包材清单</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {packagingMaterials.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between rounded-lg border p-2">
-                      <span className="text-sm">{item.name}</span>
-                      <span className="text-sm font-medium">¥{(item.price * item.quantity).toFixed(2)}</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>工序清单</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {processConfigs.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between rounded-lg border p-2">
-                      <span className="text-sm">{item.name}</span>
-                      <span className="text-sm font-medium">
-                        ¥{item.price.toFixed(2)}/{item.unit === 'piece' ? '件' : '打'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </div>
 
         {/* 右侧费用汇总 */}
@@ -247,19 +237,19 @@ export default function CostDetailPage({ params }: { params: Promise<{ id: strin
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">原料成本</span>
-                  <span>¥{q.costs.materialCost.toLocaleString()}</span>
+                  <span>¥{q.costs?.materialCost?.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">包材成本</span>
-                  <span>¥{q.costs.packagingCost.toLocaleString()}</span>
+                  <span>¥{q.costs?.packagingCost?.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">工序成本</span>
-                  <span>¥{q.costs.processCost.toLocaleString()}</span>
+                  <span>¥{q.costs?.processCost?.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">运费</span>
-                  <span>¥{q.costs.shippingCost.toLocaleString()}</span>
+                  <span>¥{q.costs?.shippingCost?.toLocaleString()}</span>
                 </div>
               </div>
 
@@ -267,13 +257,13 @@ export default function CostDetailPage({ params }: { params: Promise<{ id: strin
 
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">管销费用 (10%)</span>
-                  <span>¥{q.costs.adminFee.toLocaleString()}</span>
+                  <span className="text-muted-foreground">管销费用</span>
+                  <span>¥{q.costs?.adminFee?.toLocaleString()}</span>
                 </div>
                 {q.saleType === 'domestic' && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">增值税 (13%)</span>
-                    <span>¥{q.costs.vat.toLocaleString()}</span>
+                    <span className="text-muted-foreground">增值税</span>
+                    <span>¥{q.costs?.vat?.toLocaleString()}</span>
                   </div>
                 )}
               </div>
@@ -282,13 +272,13 @@ export default function CostDetailPage({ params }: { params: Promise<{ id: strin
 
               <div className="flex justify-between">
                 <span className="font-medium">总成本</span>
-                <span className="text-xl font-bold">¥{q.costs.totalCost.toLocaleString()}</span>
+                <span className="text-xl font-bold">¥{q.costs?.totalCost?.toLocaleString()}</span>
               </div>
 
               <div className="rounded-lg bg-muted p-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">单件成本</span>
-                  <span className="font-medium">¥{(q.costs.totalCost / q.quantity).toFixed(2)}</span>
+                  <span className="font-medium">¥{q.costs?.totalCost ? (q.costs.totalCost / q.quantity).toFixed(2) : '-'}</span>
                 </div>
               </div>
             </CardContent>

@@ -43,9 +43,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { quotations, regulations, getQuotationWithDetails } from '@/lib/data'
+import { Skeleton } from '@/components/ui/skeleton'
 import type { QuotationStatus } from '@/lib/types'
 import { useListFilters } from '@/hooks/forms/use-filters'
+import { useQuotations } from '@/hooks/api/use-quotations'
+import { useRegulations } from '@/hooks/api/use-regulations'
 
 const statusConfig: Record<QuotationStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
   draft: { label: '草稿', variant: 'secondary' },
@@ -60,11 +62,20 @@ const saleTypeLabels = {
 }
 
 export default function CostRecordsPage() {
-  const allQuotations = quotations.map(getQuotationWithDetails)
+  const { quotations, isLoading } = useQuotations()
+  const { regulations } = useRegulations()
   const { searchTerm, setSearchTerm, filters, setFilter, filteredItems: filteredQuotations } = useListFilters(
-    allQuotations,
+    quotations || [],
     ['quotationNo']
   )
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-8">
+        <Skeleton className="h-96 w-full" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">

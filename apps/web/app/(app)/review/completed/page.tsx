@@ -28,7 +28,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { quotations, getQuotationWithDetails } from '@/lib/data'
+import { useQuotations } from '@/hooks/api/use-quotations'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const saleTypeLabels = {
   domestic: '内销',
@@ -39,9 +40,18 @@ export default function CompletedReviewPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [resultFilter, setResultFilter] = useState<string>('all')
 
-  const completedQuotations = quotations
-    .filter((q) => q.status === 'approved' || q.status === 'rejected')
-    .map(getQuotationWithDetails)
+  // 已审核页面需要获取 approved 和 rejected 两种状态的报价单
+  // 由于 useQuotations 只支持单状态筛选，这里获取 approved 状态的
+  // 实际项目中可能需要后端支持多状态筛选，或调用两次 hook
+  const { quotations: approvedQuotations, isLoading: isLoadingApproved } = useQuotations({
+    status: 'approved'
+  })
+  const { quotations: rejectedQuotations, isLoading: isLoadingRejected } = useQuotations({
+    status: 'rejected'
+  })
+
+  const isLoading = isLoadingApproved || isLoadingRejected
+  const completedQuotations = [...approvedQuotations, ...rejectedQuotations]
 
   const filteredQuotations = completedQuotations.filter((q) => {
     const matchesSearch =
@@ -56,6 +66,42 @@ export default function CompletedReviewPage() {
 
   const approvedCount = completedQuotations.filter((q) => q.status === 'approved').length
   const rejectedCount = completedQuotations.filter((q) => q.status === 'rejected').length
+
+  // 加载状态
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">已审核</h1>
+          <p className="text-sm text-muted-foreground">查看已审核的报价单记录</p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <Skeleton className="h-4 w-24" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-32" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">

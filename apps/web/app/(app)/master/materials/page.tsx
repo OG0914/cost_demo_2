@@ -55,22 +55,25 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
-import { materials } from '@/lib/data'
+import { useMaterials } from '@/hooks/api/use-materials'
 import { useListFilters } from '@/hooks/forms/use-filters'
+import { Skeleton } from '@/components/ui/skeleton'
+import type { Material } from '@cost/shared-types'
 
 const categories = ['半面罩类', '口罩类', '配件类', '包装类']
 const units = ['个', '码', 'KG', '套', '卷', '包']
 const currencies = ['CNY', 'USD']
 
 export default function MaterialsPage() {
+  const { materials, isLoading } = useMaterials()
   const { searchTerm, setSearchTerm, filters, setFilter, filteredItems: filteredMaterials } = useListFilters(
-    materials,
+    materials ?? [],
     ['materialNo', 'name']
   )
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false)
-  const [editingItem, setEditingItem] = useState<typeof materials[0] | null>(null)
+  const [editingItem, setEditingItem] = useState<Material | null>(null)
   const [formData, setFormData] = useState({
     materialNo: '',
     name: '',
@@ -97,17 +100,17 @@ export default function MaterialsPage() {
     setDialogOpen(true)
   }
 
-  const handleEdit = (item: typeof materials[0]) => {
+  const handleEdit = (item: Material) => {
     setEditingItem(item)
     setFormData({
       materialNo: item.materialNo,
       name: item.name,
       unit: item.unit,
       price: item.price.toString(),
-      currency: item.currency,
+      currency: item.currency as 'CNY' | 'USD',
       manufacturer: item.manufacturer || '',
-      category: item.category,
-      note: item.note || '',
+      category: item.category || '',
+      note: '',
     })
     setDialogOpen(true)
   }
@@ -130,9 +133,17 @@ export default function MaterialsPage() {
     setDeleteDialogOpen(false)
   }
 
-  const handleViewHistory = (item: typeof materials[0]) => {
+  const handleViewHistory = (item: Material) => {
     setEditingItem(item)
     setHistoryDialogOpen(true)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-8">
+        <Skeleton className="h-96 w-full" />
+      </div>
+    )
   }
 
   const priceHistory = [

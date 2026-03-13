@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
   TableBody,
@@ -46,10 +47,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
-import { models, materials, getModelBom, bomMaterials } from '@/lib/data'
+import { useBom } from '@/hooks/api'
 
 export default function BomPage() {
-  const [selectedModelId, setSelectedModelId] = useState<string>(models[0]?.id || '')
+  const [selectedModelId, setSelectedModelId] = useState<string>('')
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [copyDialogOpen, setCopyDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -57,15 +58,28 @@ export default function BomPage() {
   const [newMaterial, setNewMaterial] = useState({ materialId: '', quantity: '' })
   const [copyTargetModelId, setCopyTargetModelId] = useState<string>('')
 
-  const selectedModel = models.find((m) => m.id === selectedModelId)
-  const modelBom = useMemo(() => getModelBom(selectedModelId), [selectedModelId])
+  const { bom, materials, models, isLoading, create, delete: deleteBom } = useBom(selectedModelId)
 
-  const availableMaterials = materials.filter(
-    (m) => !modelBom.some((b) => b.materialId === m.id)
-  )
+  // 设置默认选中的型号
+  const effectiveModelId = selectedModelId || (models[0]?.id ?? '')
+
+  const selectedModel = models.find((m: { id: string }) => m.id === effectiveModelId)
+
+  const modelBom = useMemo(() => {
+    return bom.filter((item: { modelId?: string }) =>
+      !item.modelId || item.modelId === effectiveModelId
+    )
+  }, [bom, effectiveModelId])
+
+  const availableMaterials = useMemo(() => {
+    return materials.filter(
+      (m: { id: string }) => !modelBom.some((b: { materialId: string }) => b.materialId === m.id)
+    )
+  }, [materials, modelBom])
 
   const totalMaterialCost = modelBom.reduce(
-    (sum, item) => sum + (item.material?.price || 0) * item.quantity,
+    (sum: number, item: { material?: { price: number }; quantity: number }) =>
+      sum + (item.material?.price || 0) * item.quantity,
     0
   )
 
@@ -74,7 +88,11 @@ export default function BomPage() {
       toast.error('请选择原料并填写用量')
       return
     }
-    toast.success('原料已添加到BOM')
+    create({
+      modelId: effectiveModelId,
+      materialId: newMaterial.materialId,
+      quantity: parseFloat(newMaterial.quantity),
+    })
     setAddDialogOpen(false)
     setNewMaterial({ materialId: '', quantity: '' })
   }
@@ -90,9 +108,40 @@ export default function BomPage() {
   }
 
   const handleDeleteItem = () => {
-    toast.success('原料已从BOM移除')
+    if (deletingItemId) {
+      deleteBom(deletingItemId)
+    }
     setDeleteDialogOpen(false)
     setDeletingItemId(null)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <Skeleton className="h-8 w-32" />
+          <Skeleton className="h-4 w-48 mt-2" />
+        </div>
+        <div className="grid gap-6 lg:grid-cols-4">
+          <Card className="lg:col-span-1">
+            <CardHeader>
+              <Skeleton className="h-6 w-24" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-48 w-full" />
+            </CardContent>
+          </Card>
+          <Card className="lg:col-span-3">
+            <CardHeader>
+              <Skeleton className="h-6 w-32" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-64 w-full" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -124,19 +173,19 @@ export default function BomPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {models.map((model) => {
-                const bomCount = bomMaterials.filter((b) => b.modelId === model.id).length
+              {models.map((model: { id: string; name: string; series?: string }) => {
+                const bomCount = modelBom.length
                 return (
                   <button
                     key={model.id}
                     onClick={() => setSelectedModelId(model.id)}
                     className={`flex w-full items-center justify-between rounded-lg border p-3 text-left transition-colors hover:bg-muted/50 ${
-                      selectedModelId === model.id ? 'border-foreground bg-muted/50' : ''
+                      effectiveModelId === model.id ? 'border-foreground bg-muted/50' : ''
                     }`}
                   >
                     <div>
                       <p className="font-medium">{model.name}</p>
-                      <p className="text-xs text-muted-foreground">{model.series}</p>
+                      <p className="text-xs text-muted-foreground">{model.series || '-'}</p>
                     </div>
                     <span className="text-xs text-muted-foreground">{bomCount}种</span>
                   </button>
@@ -151,17 +200,17 @@ export default function BomPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>{selectedModel?.name} BOM配置</CardTitle>
+                <CardTitle>{selectedModel?.name || '选择型号'} BOM配置</CardTitle>
                 <CardDescription>
                   共 {modelBom.length} 种原料，单件原料成本 ¥{totalMaterialCost.toFixed(2)}
                 </CardDescription>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setCopyDialogOpen(true)}>
+                <Button variant="outline" onClick={() => setCopyDialogOpen(true)} disabled={!effectiveModelId}>
                   <Copy className="mr-2 size-4" />
                   复制到其他型号
                 </Button>
-                <Button onClick={() => setAddDialogOpen(true)}>
+                <Button onClick={() => setAddDialogOpen(true)} disabled={!effectiveModelId}>
                   <Plus className="mr-2 size-4" />
                   添加原料
                 </Button>
@@ -191,7 +240,7 @@ export default function BomPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    modelBom.map((item) => (
+                    modelBom.map((item: { id: string; material?: { materialNo: string; name: string; unit: string; price: number }; quantity: number }) => (
                       <TableRow key={item.id}>
                         <TableCell>
                           <GripVertical className="size-4 text-muted-foreground cursor-move" />
@@ -208,7 +257,7 @@ export default function BomPage() {
                           />
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">
-                          ¥{item.material?.price.toFixed(2)}
+                          ¥{item.material?.price?.toFixed(2)}
                         </TableCell>
                         <TableCell className="text-right font-medium">
                           ¥{((item.material?.price || 0) * item.quantity).toFixed(2)}
@@ -265,7 +314,7 @@ export default function BomPage() {
                   <SelectValue placeholder="选择原料" />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableMaterials.map((m) => (
+                  {availableMaterials.map((m: { id: string; materialNo: string; name: string; price: number; unit: string }) => (
                     <SelectItem key={m.id} value={m.id}>
                       {m.materialNo} - {m.name} (¥{m.price}/{m.unit})
                     </SelectItem>
@@ -315,10 +364,10 @@ export default function BomPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {models
-                    .filter((m) => m.id !== selectedModelId)
-                    .map((m) => (
+                    .filter((m: { id: string }) => m.id !== effectiveModelId)
+                    .map((m: { id: string; name: string; series?: string }) => (
                       <SelectItem key={m.id} value={m.id}>
-                        {m.name} ({m.series})
+                        {m.name} ({m.series || '-'})
                       </SelectItem>
                     ))}
                 </SelectContent>

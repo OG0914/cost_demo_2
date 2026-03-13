@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Select,
   SelectContent,
@@ -20,7 +21,7 @@ import {
 } from '@/components/ui/select'
 import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer, Legend } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { quotations, getQuotationWithDetails } from '@/lib/data'
+import { useQuotations } from '@/hooks/api'
 import type { QuotationStatus } from '@/lib/types'
 
 const statusConfig: Record<QuotationStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
@@ -33,12 +34,13 @@ const statusConfig: Record<QuotationStatus, { label: string; variant: 'default' 
 export default function CostComparePage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
 
-  const allQuotations = quotations.map(getQuotationWithDetails)
+  const { quotations: allQuotations, isLoading } = useQuotations()
+
   const selectedQuotations = selectedIds
-    .map((id) => allQuotations.find((q) => q.id === id))
+    .map((id) => allQuotations?.find((q) => q.id === id))
     .filter(Boolean)
 
-  const availableQuotations = allQuotations.filter((q) => !selectedIds.includes(q.id))
+  const availableQuotations = (allQuotations ?? []).filter((q) => !selectedIds.includes(q.id))
 
   const handleAdd = (id: string) => {
     if (selectedIds.length < 4) {
@@ -54,27 +56,51 @@ export default function CostComparePage() {
   const chartData = [
     {
       name: '原料成本',
-      ...Object.fromEntries(selectedQuotations.map((q, i) => [`q${i}`, q!.costs.materialCost])),
+      ...Object.fromEntries(selectedQuotations.map((q, i) => [`q${i}`, q!.costs?.materialCost ?? 0])),
     },
     {
       name: '包材成本',
-      ...Object.fromEntries(selectedQuotations.map((q, i) => [`q${i}`, q!.costs.packagingCost])),
+      ...Object.fromEntries(selectedQuotations.map((q, i) => [`q${i}`, q!.costs?.packagingCost ?? 0])),
     },
     {
       name: '工序成本',
-      ...Object.fromEntries(selectedQuotations.map((q, i) => [`q${i}`, q!.costs.processCost])),
+      ...Object.fromEntries(selectedQuotations.map((q, i) => [`q${i}`, q!.costs?.processCost ?? 0])),
     },
     {
       name: '运费',
-      ...Object.fromEntries(selectedQuotations.map((q, i) => [`q${i}`, q!.costs.shippingCost])),
+      ...Object.fromEntries(selectedQuotations.map((q, i) => [`q${i}`, q!.costs?.shippingCost ?? 0])),
     },
     {
       name: '管销费用',
-      ...Object.fromEntries(selectedQuotations.map((q, i) => [`q${i}`, q!.costs.adminFee])),
+      ...Object.fromEntries(selectedQuotations.map((q, i) => [`q${i}`, q!.costs?.adminFee ?? 0])),
     },
   ]
 
   const colors = ['#18181b', '#3f3f46', '#71717a', '#a1a1aa']
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <Skeleton className="h-8 w-32" />
+          <Skeleton className="h-4 w-48 mt-2" />
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-24" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-10 w-full" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex h-[300px] items-center justify-center">
+            <Skeleton className="h-48 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -180,7 +206,7 @@ export default function CostComparePage() {
                     <tr className="border-b">
                       <td className="px-4 py-3 text-muted-foreground">数量</td>
                       {selectedQuotations.map((q) => (
-                        <td key={q!.id} className="px-4 py-3 text-right">{q!.quantity.toLocaleString()}</td>
+                        <td key={q!.id} className="px-4 py-3 text-right">{q!.quantity?.toLocaleString()}</td>
                       ))}
                     </tr>
                     <tr className="border-b bg-muted/30">
@@ -189,50 +215,50 @@ export default function CostComparePage() {
                     <tr className="border-b">
                       <td className="px-4 py-3 text-muted-foreground">原料成本</td>
                       {selectedQuotations.map((q) => (
-                        <td key={q!.id} className="px-4 py-3 text-right">¥{q!.costs.materialCost.toLocaleString()}</td>
+                        <td key={q!.id} className="px-4 py-3 text-right">¥{(q!.costs?.materialCost ?? 0).toLocaleString()}</td>
                       ))}
                     </tr>
                     <tr className="border-b">
                       <td className="px-4 py-3 text-muted-foreground">包材成本</td>
                       {selectedQuotations.map((q) => (
-                        <td key={q!.id} className="px-4 py-3 text-right">¥{q!.costs.packagingCost.toLocaleString()}</td>
+                        <td key={q!.id} className="px-4 py-3 text-right">¥{(q!.costs?.packagingCost ?? 0).toLocaleString()}</td>
                       ))}
                     </tr>
                     <tr className="border-b">
                       <td className="px-4 py-3 text-muted-foreground">工序成本</td>
                       {selectedQuotations.map((q) => (
-                        <td key={q!.id} className="px-4 py-3 text-right">¥{q!.costs.processCost.toLocaleString()}</td>
+                        <td key={q!.id} className="px-4 py-3 text-right">¥{(q!.costs?.processCost ?? 0).toLocaleString()}</td>
                       ))}
                     </tr>
                     <tr className="border-b">
                       <td className="px-4 py-3 text-muted-foreground">运费</td>
                       {selectedQuotations.map((q) => (
-                        <td key={q!.id} className="px-4 py-3 text-right">¥{q!.costs.shippingCost.toLocaleString()}</td>
+                        <td key={q!.id} className="px-4 py-3 text-right">¥{(q!.costs?.shippingCost ?? 0).toLocaleString()}</td>
                       ))}
                     </tr>
                     <tr className="border-b">
                       <td className="px-4 py-3 text-muted-foreground">管销费用</td>
                       {selectedQuotations.map((q) => (
-                        <td key={q!.id} className="px-4 py-3 text-right">¥{q!.costs.adminFee.toLocaleString()}</td>
+                        <td key={q!.id} className="px-4 py-3 text-right">¥{(q!.costs?.adminFee ?? 0).toLocaleString()}</td>
                       ))}
                     </tr>
                     <tr className="border-b">
                       <td className="px-4 py-3 text-muted-foreground">增值税</td>
                       {selectedQuotations.map((q) => (
-                        <td key={q!.id} className="px-4 py-3 text-right">¥{q!.costs.vat.toLocaleString()}</td>
+                        <td key={q!.id} className="px-4 py-3 text-right">¥{(q!.costs?.vat ?? 0).toLocaleString()}</td>
                       ))}
                     </tr>
                     <tr className="bg-muted/50 font-medium">
                       <td className="px-4 py-3">总成本</td>
                       {selectedQuotations.map((q) => (
-                        <td key={q!.id} className="px-4 py-3 text-right text-base">¥{q!.costs.totalCost.toLocaleString()}</td>
+                        <td key={q!.id} className="px-4 py-3 text-right text-base">¥{(q!.costs?.totalCost ?? 0).toLocaleString()}</td>
                       ))}
                     </tr>
                     <tr>
                       <td className="px-4 py-3 text-muted-foreground">单件成本</td>
                       {selectedQuotations.map((q) => (
                         <td key={q!.id} className="px-4 py-3 text-right font-medium">
-                          ¥{(q!.costs.totalCost / q!.quantity).toFixed(2)}
+                          ¥{q!.costs?.totalCost && q!.quantity ? (q!.costs.totalCost / q!.quantity).toFixed(2) : '-'}
                         </td>
                       ))}
                     </tr>

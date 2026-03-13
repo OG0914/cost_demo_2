@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
   TableBody,
@@ -40,7 +41,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { standardCosts, getStandardCostWithDetails, models } from '@/lib/data'
+import { useStandardCosts } from '@/hooks/api'
+import type { StandardCost } from '@/lib/types'
 
 const saleTypeLabels = {
   domestic: '内销',
@@ -52,21 +54,21 @@ export default function StandardCostPage() {
   const [saleTypeFilter, setSaleTypeFilter] = useState<string>('all')
   const [selectedCost, setSelectedCost] = useState<string | null>(null)
 
-  const allStandardCosts = standardCosts.map(getStandardCostWithDetails)
+  const { standardCosts, isLoading } = useStandardCosts()
 
-  const filteredCosts = allStandardCosts.filter((sc) => {
+  const filteredCosts = (standardCosts ?? []).filter((sc: StandardCost) => {
     const matchesSearch =
-      sc.model?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sc.packagingConfig?.name.toLowerCase().includes(searchTerm.toLowerCase())
+      sc.model?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sc.packagingConfig?.name?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesSaleType = saleTypeFilter === 'all' || sc.saleType === saleTypeFilter
     return matchesSearch && matchesSaleType
   })
 
-  const currentCosts = filteredCosts.filter((sc) => sc.isCurrent)
-  const historyCosts = filteredCosts.filter((sc) => !sc.isCurrent)
+  const currentCosts = filteredCosts.filter((sc: StandardCost) => sc.isCurrent)
+  const historyCosts = filteredCosts.filter((sc: StandardCost) => !sc.isCurrent)
 
   const selectedCostData = selectedCost
-    ? allStandardCosts.find((sc) => sc.id === selectedCost)
+    ? filteredCosts.find((sc: StandardCost) => sc.id === selectedCost)
     : null
 
   return (
@@ -126,24 +128,34 @@ export default function StandardCostPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {currentCosts.length === 0 ? (
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={10} className="h-24">
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-full" />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : currentCosts.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
                       暂无数据
                     </TableCell>
                   </TableRow>
                 ) : (
-                  currentCosts.map((sc) => (
+                  currentCosts.map((sc: StandardCost) => (
                     <TableRow key={sc.id}>
                       <TableCell className="font-medium">{sc.model?.name}</TableCell>
                       <TableCell>{sc.packagingConfig?.name}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{saleTypeLabels[sc.saleType]}</Badge>
                       </TableCell>
-                      <TableCell className="text-right">¥{sc.costs.materialCost.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">¥{sc.costs.packagingCost.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">¥{sc.costs.processCost.toFixed(2)}</TableCell>
-                      <TableCell className="text-right font-medium">¥{sc.costs.totalCost.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">¥{sc.costs?.materialCost?.toFixed(2) ?? '-'}</TableCell>
+                      <TableCell className="text-right">¥{sc.costs?.packagingCost?.toFixed(2) ?? '-'}</TableCell>
+                      <TableCell className="text-right">¥{sc.costs?.processCost?.toFixed(2) ?? '-'}</TableCell>
+                      <TableCell className="text-right font-medium">¥{sc.costs?.totalCost?.toFixed(2) ?? '-'}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Star className="size-3 fill-amber-400 text-amber-400" />
@@ -179,7 +191,7 @@ export default function StandardCostPage() {
       </Card>
 
       {/* 历史版本 */}
-      {historyCosts.length > 0 && (
+      {!isLoading && historyCosts.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>历史版本</CardTitle>
@@ -200,14 +212,14 @@ export default function StandardCostPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {historyCosts.map((sc) => (
+                  {historyCosts.map((sc: StandardCost) => (
                     <TableRow key={sc.id} className="text-muted-foreground">
                       <TableCell>{sc.model?.name}</TableCell>
                       <TableCell>{sc.packagingConfig?.name}</TableCell>
                       <TableCell>
                         <Badge variant="secondary">{saleTypeLabels[sc.saleType]}</Badge>
                       </TableCell>
-                      <TableCell className="text-right">¥{sc.costs.totalCost.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">¥{sc.costs?.totalCost?.toFixed(2) ?? '-'}</TableCell>
                       <TableCell>V{sc.version}</TableCell>
                       <TableCell>{sc.setAt}</TableCell>
                       <TableCell>
@@ -261,33 +273,33 @@ export default function StandardCostPage() {
                 <p className="text-sm font-medium mb-3">成本构成</p>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">原料成本</span>
-                  <span>¥{selectedCostData.costs.materialCost.toFixed(2)}</span>
+                  <span>¥{selectedCostData.costs?.materialCost?.toFixed(2) ?? '-'}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">包材成本</span>
-                  <span>¥{selectedCostData.costs.packagingCost.toFixed(2)}</span>
+                  <span>¥{selectedCostData.costs?.packagingCost?.toFixed(2) ?? '-'}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">工序成本</span>
-                  <span>¥{selectedCostData.costs.processCost.toFixed(2)}</span>
+                  <span>¥{selectedCostData.costs?.processCost?.toFixed(2) ?? '-'}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">运费</span>
-                  <span>¥{selectedCostData.costs.shippingCost.toFixed(2)}</span>
+                  <span>¥{selectedCostData.costs?.shippingCost?.toFixed(2) ?? '-'}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">管销费用</span>
-                  <span>¥{selectedCostData.costs.adminFee.toFixed(2)}</span>
+                  <span>¥{selectedCostData.costs?.adminFee?.toFixed(2) ?? '-'}</span>
                 </div>
                 {selectedCostData.saleType === 'domestic' && (
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">增值税</span>
-                    <span>¥{selectedCostData.costs.vat.toFixed(2)}</span>
+                    <span>¥{selectedCostData.costs?.vat?.toFixed(2) ?? '-'}</span>
                   </div>
                 )}
                 <div className="flex justify-between pt-2 border-t font-medium">
                   <span>单件总成本</span>
-                  <span>¥{selectedCostData.costs.totalCost.toFixed(2)}</span>
+                  <span>¥{selectedCostData.costs?.totalCost?.toFixed(2) ?? '-'}</span>
                 </div>
               </div>
             </div>

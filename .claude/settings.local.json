@@ -18,7 +18,8 @@
       "Bash(cd E:/desktop/cost_demo_2 && pnpm install pg @types/pg uuid @types/uuid dotenv @types/dotenv --save-dev 2>&1 | tail -5)",
       "WebFetch(domain:github.com)",
       "Bash(docker exec:*)",
-      "Bash(psql -h localhost -p 5432 -U postgres -d cost_analysis -c \"SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_name = 'quotations' ORDER BY ordinal_position;\")"
+      "Bash(psql -h localhost -p 5432 -U postgres -d cost_analysis -c \"SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_name = 'quotations' ORDER BY ordinal_position;\")",
+      "Bash(pnpm dev:*)"
     ]
   },
   "hooks": {

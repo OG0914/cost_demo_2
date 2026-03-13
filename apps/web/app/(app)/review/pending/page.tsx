@@ -32,7 +32,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
-import { quotations, getQuotationWithDetails } from '@/lib/data'
+import { useQuotations } from '@/hooks/api/use-quotations'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const saleTypeLabels = {
   domestic: '内销',
@@ -48,9 +49,9 @@ export default function PendingReviewPage() {
   const [approveNote, setApproveNote] = useState('')
   const [setAsStandard, setSetAsStandard] = useState(false)
 
-  const pendingQuotations = quotations
-    .filter((q) => q.status === 'submitted')
-    .map(getQuotationWithDetails)
+  const { quotations: pendingQuotations, isLoading, approve, reject } = useQuotations({
+    status: 'submitted'
+  })
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -82,9 +83,13 @@ export default function PendingReviewPage() {
   }
 
   const confirmApprove = () => {
-    toast.success('报价单已批准')
+    if (currentId) {
+      approve({ id: currentId, note: approveNote })
+    }
     setApproveDialogOpen(false)
     setCurrentId(null)
+    setApproveNote('')
+    setSetAsStandard(false)
   }
 
   const confirmReject = () => {
@@ -92,7 +97,9 @@ export default function PendingReviewPage() {
       toast.error('请填写退回原因')
       return
     }
-    toast.success('报价单已退回')
+    if (currentId) {
+      reject({ id: currentId, note: rejectReason })
+    }
     setRejectDialogOpen(false)
     setCurrentId(null)
     setRejectReason('')
@@ -110,6 +117,42 @@ export default function PendingReviewPage() {
   const currentQuotation = currentId
     ? pendingQuotations.find((q) => q.id === currentId)
     : null
+
+  // 加载状态
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">待审核</h1>
+          <p className="text-sm text-muted-foreground">审核业务员提交的报价单</p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <Skeleton className="h-4 w-24" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-32" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">

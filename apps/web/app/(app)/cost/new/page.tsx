@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ArrowLeft, Check, ChevronRight } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -16,17 +17,10 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
-import {
-  regulations,
-  models,
-  customers,
-  getModelPackagingConfigs,
-  getModelBom,
-  getPackagingMaterials,
-  getPackagingProcessConfigs,
-  systemConfig,
-} from '@/lib/data'
+import { useRegulations, useCustomers, useModels, useQuotations } from '@/hooks/api'
+import { modelApi, packagingApi, quotationApi } from '@/lib/api'
 import type { SaleType, ShippingType } from '@/lib/types'
 
 const steps = [
@@ -38,6 +32,7 @@ const steps = [
 ]
 
 export default function NewCostPage() {
+  const router = useRouter()
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState({
     regulationId: '',
@@ -49,46 +44,78 @@ export default function NewCostPage() {
     shippingType: 'fcl20' as ShippingType,
     quantity: 1000,
   })
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const selectedRegulation = regulations.find((r) => r.id === formData.regulationId)
-  const filteredModels = models.filter((m) => m.regulationId === formData.regulationId)
-  const selectedModel = models.find((m) => m.id === formData.modelId)
-  const packagingConfigs = formData.modelId ? getModelPackagingConfigs(formData.modelId) : []
-  const selectedPackagingConfig = packagingConfigs.find((p) => p.id === formData.packagingConfigId)
-  const selectedCustomer = customers.find((c) => c.id === formData.customerId)
+  // API hooks
+  const { regulations, isLoading: isLoadingRegulations } = useRegulations()
+  const { customers, isLoading: isLoadingCustomers } = useCustomers()
+  const { models, isLoading: isLoadingModels } = useModels()
+  const { create } = useQuotations()
+
+  // 派生数据
+  const selectedRegulation = regulations?.find((r) => r.id === formData.regulationId)
+  const filteredModels = models?.filter((m) => m.regulationId === formData.regulationId) ?? []
+  const selectedModel = models?.find((m) => m.id === formData.modelId)
+  const selectedCustomer = customers?.find((c) => c.id === formData.customerId)
+
+  // 包装配置
+  const [packagingConfigs, setPackagingConfigs] = useState<Array<{ id: string; name: string; packagingType: string }>>([])
+  const [isLoadingPackaging, setIsLoadingPackaging] = useState(false)
 
   // 成本计算
-  const calculateCosts = () => {
-    if (!formData.modelId || !formData.packagingConfigId) {
-      return { materialCost: 0, packagingCost: 0, processCost: 0, shippingCost: 0, adminFee: 0, vat: 0, totalCost: 0 }
+  const [costs, setCosts] = useState({
+    materialCost: 0,
+    packagingCost: 0,
+    processCost: 0,
+    shippingCost: 0,
+    adminFee: 0,
+    vat: 0,
+    totalCost: 0,
+  })
+  const [isCalculating, setIsCalculating] = useState(false)
+
+  // 加载包装配置
+  const loadPackagingConfigs = async (modelId: string) => {
+    setIsLoadingPackaging(true)
+    try {
+      const response = await modelApi.getPackagingConfigs(modelId)
+      setPackagingConfigs((response.data?.data ?? []) as Array<{ id: string; name: string; packagingType: string }>)
+    } finally {
+      setIsLoadingPackaging(false)
     }
-
-    const bom = getModelBom(formData.modelId)
-    const packagingMaterials = getPackagingMaterials(formData.packagingConfigId)
-    const processConfigs = getPackagingProcessConfigs(formData.packagingConfigId)
-
-    const materialCost = bom.reduce((sum, item) => sum + (item.material?.price || 0) * item.quantity, 0) * formData.quantity
-    const packagingCost = packagingMaterials.reduce((sum, item) => sum + item.price * item.quantity, 0) * formData.quantity
-    const processCost = processConfigs.reduce((sum, item) => {
-      const price = item.unit === 'dozen' ? item.price / 12 : item.price
-      return sum + price
-    }, 0) * formData.quantity
-
-    const shippingCost = formData.shippingType === 'fcl20'
-      ? systemConfig.fcl20Rate
-      : formData.shippingType === 'fcl40'
-        ? systemConfig.fcl40Rate
-        : systemConfig.lclBaseRate * Math.ceil(formData.quantity / 1000)
-
-    const baseCost = materialCost + packagingCost + processCost
-    const adminFee = baseCost * systemConfig.adminFeeRate
-    const vat = formData.saleType === 'domestic' ? baseCost * systemConfig.vatRate : 0
-    const totalCost = baseCost + adminFee + vat + shippingCost
-
-    return { materialCost, packagingCost, processCost, shippingCost, adminFee, vat, totalCost }
   }
 
-  const costs = calculateCosts()
+  // 计算成本
+  const calculateCosts = async () => {
+    if (!formData.modelId || !formData.packagingConfigId) return
+
+    setIsCalculating(true)
+    try {
+      const response = await quotationApi.calculate({
+        modelId: formData.modelId,
+        packagingConfigId: formData.packagingConfigId,
+        quantity: formData.quantity,
+        saleType: formData.saleType,
+        shippingType: formData.shippingType,
+      })
+      const result = response.data?.data
+      if (result) {
+        setCosts({
+          materialCost: result.materialCost ?? 0,
+          packagingCost: result.packagingCost ?? 0,
+          processCost: result.processCost ?? 0,
+          shippingCost: result.shippingCost ?? 0,
+          adminFee: result.adminFee ?? 0,
+          vat: result.vat ?? 0,
+          totalCost: result.totalCost ?? 0,
+        })
+      }
+    } finally {
+      setIsCalculating(false)
+    }
+  }
+
+  const selectedPackagingConfig = packagingConfigs.find((p) => p.id === formData.packagingConfigId)
 
   const canProceed = () => {
     switch (currentStep) {
@@ -104,6 +131,9 @@ export default function NewCostPage() {
   const handleNext = () => {
     if (currentStep < 5 && canProceed()) {
       setCurrentStep(currentStep + 1)
+      if (currentStep === 2) {
+        calculateCosts()
+      }
     }
   }
 
@@ -111,6 +141,52 @@ export default function NewCostPage() {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1)
     }
+  }
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true)
+    try {
+      create({
+        customerId: formData.customerId || undefined,
+        customerName: formData.customerName || undefined,
+        regulationId: formData.regulationId,
+        modelId: formData.modelId,
+        packagingConfigId: formData.packagingConfigId,
+        saleType: formData.saleType,
+        shippingType: formData.shippingType,
+        quantity: formData.quantity,
+      }, {
+        onSuccess: () => {
+          router.push('/cost/records')
+        },
+        onSettled: () => {
+          setIsSubmitting(false)
+        }
+      })
+    } catch {
+      setIsSubmitting(false)
+    }
+  }
+
+  const isLoading = isLoadingRegulations || isLoadingModels || isLoadingCustomers
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Skeleton className="size-10" />
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+        </div>
+        <div className="grid gap-6 lg:grid-cols-4">
+          <Skeleton className="h-96" />
+          <Skeleton className="lg:col-span-2 h-96" />
+          <Skeleton className="h-96" />
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -180,7 +256,7 @@ export default function NewCostPage() {
                   onValueChange={(value) => setFormData({ ...formData, regulationId: value, modelId: '', packagingConfigId: '' })}
                   className="grid gap-3"
                 >
-                  {regulations.filter((r) => r.status === 'active').map((regulation) => (
+                  {regulations?.filter((r) => r.status === 'active').map((regulation) => (
                     <label
                       key={regulation.id}
                       className={cn(
@@ -214,7 +290,10 @@ export default function NewCostPage() {
                   <Label>产品型号</Label>
                   <RadioGroup
                     value={formData.modelId}
-                    onValueChange={(value) => setFormData({ ...formData, modelId: value, packagingConfigId: '' })}
+                    onValueChange={(value) => {
+                      setFormData({ ...formData, modelId: value, packagingConfigId: '' })
+                      loadPackagingConfigs(value)
+                    }}
                     className="grid gap-3 sm:grid-cols-2"
                   >
                     {filteredModels.map((model) => (
@@ -235,30 +314,37 @@ export default function NewCostPage() {
                   </RadioGroup>
                 </div>
 
-                {formData.modelId && packagingConfigs.length > 0 && (
+                {formData.modelId && (
                   <div className="space-y-3">
                     <Label>包装配置</Label>
-                    <RadioGroup
-                      value={formData.packagingConfigId}
-                      onValueChange={(value) => setFormData({ ...formData, packagingConfigId: value })}
-                      className="grid gap-3"
-                    >
-                      {packagingConfigs.map((config) => (
-                        <label
-                          key={config.id}
-                          className={cn(
-                            'flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50',
-                            formData.packagingConfigId === config.id && 'border-foreground bg-muted/50'
-                          )}
-                        >
-                          <RadioGroupItem value={config.id} />
-                          <div>
-                            <p className="font-medium">{config.name}</p>
-                            <p className="text-xs text-muted-foreground">{config.packagingType}</p>
-                          </div>
-                        </label>
-                      ))}
-                    </RadioGroup>
+                    {isLoadingPackaging ? (
+                      <div className="space-y-2">
+                        <Skeleton className="h-12" />
+                        <Skeleton className="h-12" />
+                      </div>
+                    ) : (
+                      <RadioGroup
+                        value={formData.packagingConfigId}
+                        onValueChange={(value) => setFormData({ ...formData, packagingConfigId: value })}
+                        className="grid gap-3"
+                      >
+                        {packagingConfigs.map((config) => (
+                          <label
+                            key={config.id}
+                            className={cn(
+                              'flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50',
+                              formData.packagingConfigId === config.id && 'border-foreground bg-muted/50'
+                            )}
+                          >
+                            <RadioGroupItem value={config.id} />
+                            <div>
+                              <p className="font-medium">{config.name}</p>
+                              <p className="text-xs text-muted-foreground">{config.packagingType}</p>
+                            </div>
+                          </label>
+                        ))}
+                      </RadioGroup>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -283,7 +369,7 @@ export default function NewCostPage() {
                       <SelectValue placeholder="选择已有客户" />
                     </SelectTrigger>
                     <SelectContent>
-                      {customers.map((customer) => (
+                      {customers?.map((customer) => (
                         <SelectItem key={customer.id} value={customer.id}>
                           {customer.name} ({customer.code})
                         </SelectItem>
@@ -364,48 +450,39 @@ export default function NewCostPage() {
                   >
                     <label
                       className={cn(
-                        'flex cursor-pointer items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50',
+                        'flex cursor-pointer items-center gap-3 rounded-lg border p-4 transition-colors hover:bg-muted/50',
                         formData.shippingType === 'fcl20' && 'border-foreground bg-muted/50'
                       )}
                     >
-                      <div className="flex items-center gap-3">
-                        <RadioGroupItem value="fcl20" />
-                        <div>
-                          <p className="font-medium">整柜 20尺</p>
-                          <p className="text-xs text-muted-foreground">FCL 20</p>
-                        </div>
+                      <RadioGroupItem value="fcl20" />
+                      <div>
+                        <p className="font-medium">整柜 20尺</p>
+                        <p className="text-xs text-muted-foreground">FCL 20</p>
                       </div>
-                      <span className="text-sm font-medium">¥{systemConfig.fcl20Rate.toLocaleString()}</span>
                     </label>
                     <label
                       className={cn(
-                        'flex cursor-pointer items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50',
+                        'flex cursor-pointer items-center gap-3 rounded-lg border p-4 transition-colors hover:bg-muted/50',
                         formData.shippingType === 'fcl40' && 'border-foreground bg-muted/50'
                       )}
                     >
-                      <div className="flex items-center gap-3">
-                        <RadioGroupItem value="fcl40" />
-                        <div>
-                          <p className="font-medium">整柜 40尺</p>
-                          <p className="text-xs text-muted-foreground">FCL 40</p>
-                        </div>
+                      <RadioGroupItem value="fcl40" />
+                      <div>
+                        <p className="font-medium">整柜 40尺</p>
+                        <p className="text-xs text-muted-foreground">FCL 40</p>
                       </div>
-                      <span className="text-sm font-medium">¥{systemConfig.fcl40Rate.toLocaleString()}</span>
                     </label>
                     <label
                       className={cn(
-                        'flex cursor-pointer items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50',
+                        'flex cursor-pointer items-center gap-3 rounded-lg border p-4 transition-colors hover:bg-muted/50',
                         formData.shippingType === 'lcl' && 'border-foreground bg-muted/50'
                       )}
                     >
-                      <div className="flex items-center gap-3">
-                        <RadioGroupItem value="lcl" />
-                        <div>
-                          <p className="font-medium">拼箱</p>
-                          <p className="text-xs text-muted-foreground">LCL 按体积计算</p>
-                        </div>
+                      <RadioGroupItem value="lcl" />
+                      <div>
+                        <p className="font-medium">拼箱</p>
+                        <p className="text-xs text-muted-foreground">LCL 按体积计算</p>
                       </div>
-                      <span className="text-sm font-medium">¥{systemConfig.lclBaseRate}/CBM</span>
                     </label>
                   </RadioGroup>
                 </div>
@@ -472,8 +549,10 @@ export default function NewCostPage() {
               </Button>
             ) : (
               <div className="flex gap-2">
-                <Button variant="outline">保存草稿</Button>
-                <Button>提交审核</Button>
+                <Button variant="outline" onClick={() => router.push('/cost/records')}>取消</Button>
+                <Button onClick={handleSubmit} disabled={isSubmitting}>
+                  {isSubmitting ? '提交中...' : '提交审核'}
+                </Button>
               </div>
             )}
           </div>
@@ -486,54 +565,64 @@ export default function NewCostPage() {
             <CardDescription>实时计算结果</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">原料成本</span>
-                <span>¥{costs.materialCost.toLocaleString()}</span>
+            {isCalculating ? (
+              <div className="space-y-2">
+                <Skeleton className="h-4" />
+                <Skeleton className="h-4" />
+                <Skeleton className="h-4" />
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">包材成本</span>
-                <span>¥{costs.packagingCost.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">工序成本</span>
-                <span>¥{costs.processCost.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">运费</span>
-                <span>¥{costs.shippingCost.toLocaleString()}</span>
-              </div>
-            </div>
+            ) : (
+              <>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">原料成本</span>
+                    <span>¥{costs.materialCost.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">包材成本</span>
+                    <span>¥{costs.packagingCost.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">工序成本</span>
+                    <span>¥{costs.processCost.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">运费</span>
+                    <span>¥{costs.shippingCost.toLocaleString()}</span>
+                  </div>
+                </div>
 
-            <Separator />
+                <Separator />
 
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">管销费用</span>
-                <span>¥{costs.adminFee.toLocaleString()}</span>
-              </div>
-              {formData.saleType === 'domestic' && (
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">管销费用</span>
+                    <span>¥{costs.adminFee.toLocaleString()}</span>
+                  </div>
+                  {formData.saleType === 'domestic' && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">增值税</span>
+                      <span>¥{costs.vat.toLocaleString()}</span>
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">增值税</span>
-                  <span>¥{costs.vat.toLocaleString()}</span>
+                  <span className="font-medium">总成本</span>
+                  <span className="text-lg font-bold">¥{costs.totalCost.toLocaleString()}</span>
                 </div>
-              )}
-            </div>
 
-            <Separator />
-
-            <div className="flex justify-between">
-              <span className="font-medium">总成本</span>
-              <span className="text-lg font-bold">¥{costs.totalCost.toLocaleString()}</span>
-            </div>
-
-            {formData.quantity > 0 && (
-              <div className="rounded-lg bg-muted p-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">单件成本</span>
-                  <span className="font-medium">¥{(costs.totalCost / formData.quantity).toFixed(2)}</span>
-                </div>
-              </div>
+                {formData.quantity > 0 && (
+                  <div className="rounded-lg bg-muted p-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">单件成本</span>
+                      <span className="font-medium">¥{(costs.totalCost / formData.quantity).toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>

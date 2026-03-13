@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
   TableBody,
@@ -54,14 +55,26 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
-import { models, packagingConfigs, packagingMaterials, getPackagingMaterials } from '@/lib/data'
+import { usePackagingConfigs, usePackagingMaterials } from '@/hooks/api'
+
+interface PackagingMaterial {
+  id: string
+  name: string
+  quantity: number
+  price: number
+  boxVolume?: {
+    length: number
+    width: number
+    height: number
+  }
+}
 
 export default function PackagingPage() {
-  const [selectedModelId, setSelectedModelId] = useState<string>(models[0]?.id || '')
+  const [selectedModelId, setSelectedModelId] = useState<string>('')
   const [selectedPackagingId, setSelectedPackagingId] = useState<string>('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [editingItem, setEditingItem] = useState<typeof packagingMaterials[0] | null>(null)
+  const [editingItem, setEditingItem] = useState<PackagingMaterial | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     quantity: '',
@@ -71,21 +84,26 @@ export default function PackagingPage() {
     boxHeight: '',
   })
 
-  const selectedModel = models.find((m) => m.id === selectedModelId)
-  const modelPackagingConfigs = packagingConfigs.filter((p) => p.modelId === selectedModelId)
+  const { packagingConfigs, models, isLoading: isLoadingConfigs } = usePackagingConfigs(selectedModelId)
 
-  const currentPackagingId = selectedPackagingId && modelPackagingConfigs.some((p) => p.id === selectedPackagingId)
+  // 根据型号筛选包装配置
+  const modelPackagingConfigs = useMemo(() => {
+    if (!selectedModelId) return packagingConfigs
+    return packagingConfigs.filter((p: { modelId?: string }) => p.modelId === selectedModelId)
+  }, [packagingConfigs, selectedModelId])
+
+  const currentPackagingId = selectedPackagingId && modelPackagingConfigs.some((p: { id: string }) => p.id === selectedPackagingId)
     ? selectedPackagingId
     : modelPackagingConfigs[0]?.id || ''
 
-  const selectedPackaging = packagingConfigs.find((p) => p.id === currentPackagingId)
-  const currentPackagingMaterials = useMemo(
-    () => getPackagingMaterials(currentPackagingId),
-    [currentPackagingId]
-  )
+  const selectedPackaging = modelPackagingConfigs.find((p: { id: string }) => p.id === currentPackagingId)
 
-  const totalPackagingCost = currentPackagingMaterials.reduce(
-    (sum, item) => sum + item.price * item.quantity,
+  const { packagingMaterials, isLoading: isLoadingMaterials, create, update, delete: deleteMaterial } = usePackagingMaterials(currentPackagingId)
+
+  const isLoading = isLoadingConfigs || isLoadingMaterials
+
+  const totalPackagingCost = (packagingMaterials as PackagingMaterial[]).reduce(
+    (sum: number, item: PackagingMaterial) => sum + item.price * item.quantity,
     0
   )
 
@@ -95,7 +113,7 @@ export default function PackagingPage() {
     setDialogOpen(true)
   }
 
-  const handleEdit = (item: typeof packagingMaterials[0]) => {
+  const handleEdit = (item: PackagingMaterial) => {
     setEditingItem(item)
     setFormData({
       name: item.name,
@@ -113,14 +131,63 @@ export default function PackagingPage() {
       toast.error('请填写完整信息')
       return
     }
-    toast.success(editingItem ? '包材已更新' : '包材已添加')
+
+    const data = {
+      name: formData.name,
+      quantity: parseFloat(formData.quantity),
+      price: parseFloat(formData.price),
+      boxVolume: formData.boxLength && formData.boxWidth && formData.boxHeight
+        ? {
+            length: parseFloat(formData.boxLength),
+            width: parseFloat(formData.boxWidth),
+            height: parseFloat(formData.boxHeight),
+          }
+        : undefined,
+    }
+
+    if (editingItem) {
+      update({ materialId: editingItem.id, data })
+    } else {
+      create(data)
+    }
     setDialogOpen(false)
   }
 
   const handleDelete = () => {
-    toast.success('包材已删除')
+    if (editingItem) {
+      deleteMaterial(editingItem.id)
+    }
     setDeleteDialogOpen(false)
     setEditingItem(null)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <Skeleton className="h-8 w-32" />
+          <Skeleton className="h-4 w-48 mt-2" />
+        </div>
+        <div className="grid gap-6 lg:grid-cols-4">
+          <Card className="lg:col-span-1">
+            <CardHeader>
+              <Skeleton className="h-6 w-24" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-48 w-full" />
+            </CardContent>
+          </Card>
+          <Card className="lg:col-span-3">
+            <CardHeader>
+              <Skeleton className="h-6 w-32" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-64 w-full" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -164,7 +231,7 @@ export default function PackagingPage() {
                   <SelectValue placeholder="选择型号" />
                 </SelectTrigger>
                 <SelectContent>
-                  {models.map((m) => (
+                  {models.map((m: { id: string; name: string }) => (
                     <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -177,8 +244,8 @@ export default function PackagingPage() {
                 {modelPackagingConfigs.length === 0 ? (
                   <p className="text-sm text-muted-foreground py-2">该型号暂无包装配置</p>
                 ) : (
-                  modelPackagingConfigs.map((config) => {
-                    const materialCount = packagingMaterials.filter((p) => p.packagingConfigId === config.id).length
+                  modelPackagingConfigs.map((config: { id: string; name: string; packagingType?: string }) => {
+                    const materialCount = (packagingMaterials as PackagingMaterial[]).length
                     return (
                       <button
                         key={config.id}
@@ -189,7 +256,7 @@ export default function PackagingPage() {
                       >
                         <div>
                           <p className="text-sm font-medium">{config.name}</p>
-                          <p className="text-xs text-muted-foreground">{config.packagingType}</p>
+                          <p className="text-xs text-muted-foreground">{config.packagingType || '-'}</p>
                         </div>
                         <span className="text-xs text-muted-foreground">{materialCount}种包材</span>
                       </button>
@@ -207,10 +274,10 @@ export default function PackagingPage() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle>
-                  {selectedModel?.name} - {selectedPackaging?.name || '未选择'}
+                  {selectedModelId ? models.find((m: { id: string }) => m.id === selectedModelId)?.name : '选择型号'} - {selectedPackaging?.name || '未选择'}
                 </CardTitle>
                 <CardDescription>
-                  共 {currentPackagingMaterials.length} 种包材，单件包材成本 ¥{totalPackagingCost.toFixed(2)}
+                  共 {(packagingMaterials as PackagingMaterial[]).length} 种包材，单件包材成本 ¥{totalPackagingCost.toFixed(2)}
                 </CardDescription>
               </div>
               <Button onClick={handleAdd} disabled={!currentPackagingId}>
@@ -233,14 +300,14 @@ export default function PackagingPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {currentPackagingMaterials.length === 0 ? (
+                  {(packagingMaterials as PackagingMaterial[]).length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                         {currentPackagingId ? '暂无包材配置，点击"添加包材"开始配置' : '请先选择包装配置'}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    currentPackagingMaterials.map((item) => (
+                    (packagingMaterials as PackagingMaterial[]).map((item: PackagingMaterial) => (
                       <TableRow key={item.id}>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
@@ -295,7 +362,7 @@ export default function PackagingPage() {
               </Table>
             </div>
 
-            {currentPackagingMaterials.length > 0 && (
+            {(packagingMaterials as PackagingMaterial[]).length > 0 && (
               <div className="mt-4 flex justify-end">
                 <div className="rounded-lg bg-muted p-3 text-right">
                   <p className="text-sm text-muted-foreground">单件包材总成本</p>
@@ -313,7 +380,7 @@ export default function PackagingPage() {
           <DialogHeader>
             <DialogTitle>{editingItem ? '编辑包材' : '添加包材'}</DialogTitle>
             <DialogDescription>
-              {selectedModel?.name} - {selectedPackaging?.name}
+              {selectedModelId ? models.find((m: { id: string }) => m.id === selectedModelId)?.name : '选择型号'} - {selectedPackaging?.name}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">

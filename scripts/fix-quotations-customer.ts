@@ -61,11 +61,15 @@ async function checkDefaultCustomer(client: Client): Promise<boolean> {
  * 创建默认客户
  */
 async function createDefaultCustomer(client: Client): Promise<void> {
+  // 获取第一个用户作为 created_by
+  const userResult = await client.query(`SELECT id FROM users LIMIT 1`);
+  const createdBy = userResult.rows[0]?.id;
+
   await client.query(`
-    INSERT INTO customers (id, code, name, region, created_at, updated_at)
-    VALUES ($1, $2, $3, $4, NOW(), NOW())
+    INSERT INTO customers (id, code, name, region, created_by, updated_by, created_at, updated_at)
+    VALUES ($1, $2, $3, $4, $5, $5, NOW(), NOW())
     ON CONFLICT (id) DO NOTHING
-  `, [DEFAULT_CUSTOMER_UUID, 'UNKNOWN', '未指定客户', 'Unknown']);
+  `, [DEFAULT_CUSTOMER_UUID, 'UNKNOWN', '未指定客户', 'Unknown', createdBy]);
   console.log('  已创建默认客户');
 }
 

@@ -55,19 +55,24 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
-import { models, regulations, getModelBom, getModelPackagingConfigs } from '@/lib/data'
+import { useModels } from '@/hooks/api/use-models'
+import { useRegulations } from '@/hooks/api/use-regulations'
+import { Skeleton } from '@/components/ui/skeleton'
+import type { Model, Regulation } from '@cost/shared-types'
 
 const categories = ['半面罩', '口罩', '全面罩', '配件']
 const series = ['D系列', 'P系列', 'N系列', 'X系列']
 
 export default function ModelsPage() {
+  const { models, isLoading: isLoadingModels } = useModels()
+  const { regulations, isLoading: isLoadingRegulations } = useRegulations()
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [regulationFilter, setRegulationFilter] = useState<string>('all')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
-  const [editingItem, setEditingItem] = useState<typeof models[0] | null>(null)
+  const [editingItem, setEditingItem] = useState<Model | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     regulationId: '',
@@ -75,7 +80,9 @@ export default function ModelsPage() {
     series: '',
   })
 
-  const filteredModels = models.filter((m) => {
+  const isLoading = isLoadingModels || isLoadingRegulations
+
+  const filteredModels = (models ?? []).filter((m) => {
     const matchesSearch = m.name.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesCategory = categoryFilter === 'all' || m.category === categoryFilter
     const matchesRegulation = regulationFilter === 'all' || m.regulationId === regulationFilter
@@ -88,18 +95,18 @@ export default function ModelsPage() {
     setDialogOpen(true)
   }
 
-  const handleEdit = (item: typeof models[0]) => {
+  const handleEdit = (item: Model) => {
     setEditingItem(item)
     setFormData({
       name: item.name,
       regulationId: item.regulationId,
-      category: item.category,
-      series: item.series,
+      category: item.category || '',
+      series: item.series || '',
     })
     setDialogOpen(true)
   }
 
-  const handleViewDetail = (item: typeof models[0]) => {
+  const handleViewDetail = (item: Model) => {
     setEditingItem(item)
     setDetailDialogOpen(true)
   }
@@ -119,11 +126,20 @@ export default function ModelsPage() {
   }
 
   const getRegulationName = (id: string) => {
-    return regulations.find((r) => r.id === id)?.name || '-'
+    return (regulations ?? []).find((r: Regulation) => r.id === id)?.name || '-'
   }
 
-  const selectedModelBom = editingItem ? getModelBom(editingItem.id) : []
-  const selectedModelPackaging = editingItem ? getModelPackagingConfigs(editingItem.id) : []
+  // 临时使用空数组，后续可通过API获取BOM和包装配置
+  const selectedModelBom: Array<{ id: string; material?: { name: string; unit: string }; quantity: number }> = []
+  const selectedModelPackaging: Array<{ id: string; name: string; packagingType: string }> = []
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-8">
+        <Skeleton className="h-96 w-full" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -162,7 +178,7 @@ export default function ModelsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">全部法规</SelectItem>
-                {regulations.map((r) => (
+                {(regulations ?? []).map((r: Regulation) => (
                   <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -203,8 +219,9 @@ export default function ModelsPage() {
                   </TableRow>
                 ) : (
                   filteredModels.map((item) => {
-                    const bomCount = getModelBom(item.id).length
-                    const packagingCount = getModelPackagingConfigs(item.id).length
+                    // 临时使用0，后续可通过API获取
+                    const bomCount = 0
+                    const packagingCount = 0
                     return (
                       <TableRow key={item.id}>
                         <TableCell className="font-medium">{item.name}</TableCell>
@@ -293,7 +310,7 @@ export default function ModelsPage() {
                   <SelectValue placeholder="选择法规" />
                 </SelectTrigger>
                 <SelectContent>
-                  {regulations.filter((r) => r.status === 'active').map((r) => (
+                  {(regulations ?? []).filter((r: Regulation) => r.status === 'active').map((r: Regulation) => (
                     <SelectItem key={r.id} value={r.id}>{r.name} - {r.description}</SelectItem>
                   ))}
                 </SelectContent>

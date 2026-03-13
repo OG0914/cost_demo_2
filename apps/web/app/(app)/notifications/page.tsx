@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Bell, Search, Filter, AlertTriangle, TrendingUp, Archive, CheckCircle2, Clock, Eye } from 'lucide-react'
 import {
   Card,
@@ -37,8 +37,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
-import { notifications, getMaterialById, standardCosts, getStandardCostWithDetails } from '@/lib/data'
+import { useNotifications } from '@/hooks/api'
+import { useMaterials } from '@/hooks/api'
 import type { NotificationStatus, NotificationType } from '@/lib/types'
 
 const typeConfig: Record<NotificationType, { label: string; icon: typeof TrendingUp; color: string }> = {
@@ -52,36 +54,61 @@ const statusConfig: Record<NotificationStatus, { label: string; variant: 'defaul
   archived: { label: '已归档', variant: 'secondary' },
 }
 
+interface Notification {
+  id: string
+  type: NotificationType
+  status: NotificationStatus
+  materialId: string
+  oldPrice?: number
+  newPrice?: number
+  affectedStandardCosts: string[]
+  triggeredBy: string
+  triggeredAt: string
+  processedBy?: string
+  processedAt?: string
+}
+
 export default function NotificationsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [processDialogOpen, setProcessDialogOpen] = useState(false)
-  const [selectedNotification, setSelectedNotification] = useState<typeof notifications[0] | null>(null)
+  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null)
   const [selectedStandardCostIds, setSelectedStandardCostIds] = useState<string[]>([])
 
-  const notificationsWithDetails = notifications.map((n) => ({
-    ...n,
-    material: getMaterialById(n.materialId),
-  }))
+  const { notifications, isLoading } = useNotifications()
+  const { materials } = useMaterials()
 
-  const filteredNotifications = notificationsWithDetails.filter((n) => {
-    const matchesSearch = n.material?.name.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesType = typeFilter === 'all' || n.type === typeFilter
-    const matchesStatus = statusFilter === 'all' || n.status === statusFilter
-    return matchesSearch && matchesType && matchesStatus
-  })
+  const getMaterialById = (id: string) => {
+    return materials.find((m: { id: string }) => m.id === id)
+  }
 
-  const pendingCount = notifications.filter((n) => n.status === 'pending').length
-  const processedCount = notifications.filter((n) => n.status === 'processed').length
+  const notificationsWithDetails = useMemo(() => {
+    return (notifications as Notification[]).map((n) => ({
+      ...n,
+      material: getMaterialById(n.materialId),
+    }))
+  }, [notifications, materials])
 
-  const handleViewDetail = (notification: typeof notifications[0]) => {
+  const filteredNotifications = useMemo(() => {
+    return notificationsWithDetails.filter((n) => {
+      const matchesSearch = n.material?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? true
+      const matchesType = typeFilter === 'all' || n.type === typeFilter
+      const matchesStatus = statusFilter === 'all' || n.status === statusFilter
+      return matchesSearch && matchesType && matchesStatus
+    })
+  }, [notificationsWithDetails, searchTerm, typeFilter, statusFilter])
+
+  const pendingCount = (notifications as Notification[]).filter((n) => n.status === 'pending').length
+  const processedCount = (notifications as Notification[]).filter((n) => n.status === 'processed').length
+
+  const handleViewDetail = (notification: Notification) => {
     setSelectedNotification(notification)
     setDetailDialogOpen(true)
   }
 
-  const handleProcess = (notification: typeof notifications[0]) => {
+  const handleProcess = (notification: Notification) => {
     setSelectedNotification(notification)
     setSelectedStandardCostIds([...notification.affectedStandardCosts])
     setProcessDialogOpen(true)
@@ -103,11 +130,36 @@ export default function NotificationsPage() {
     toast.success('通知已归档')
   }
 
-  const affectedStandardCosts = selectedNotification
-    ? standardCosts
-        .filter((sc) => selectedNotification.affectedStandardCosts.includes(sc.id))
-        .map(getStandardCostWithDetails)
-    : []
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-64 mt-2" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardHeader className="pb-2">
+                <Skeleton className="h-4 w-20" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-24" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-64 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -371,28 +423,11 @@ export default function NotificationsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>受影响的标准成本 ({affectedStandardCosts.length})</Label>
+                <Label>受影响的标准成本</Label>
                 <div className="rounded-md border max-h-[200px] overflow-y-auto">
-                  {affectedStandardCosts.map((sc) => (
-                    <div key={sc.id} className="flex items-center gap-3 p-3 border-b last:border-0">
-                      <Checkbox
-                        checked={selectedStandardCostIds.includes(sc.id)}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setSelectedStandardCostIds([...selectedStandardCostIds, sc.id])
-                          } else {
-                            setSelectedStandardCostIds(selectedStandardCostIds.filter((id) => id !== sc.id))
-                          }
-                        }}
-                      />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{sc.model?.name} - {sc.packagingConfig?.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          当前成本: ¥{sc.costs.totalCost.toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                  <div className="p-3 text-sm text-muted-foreground">
+                    标准成本数据需要从API获取
+                  </div>
                 </div>
               </div>
             </div>

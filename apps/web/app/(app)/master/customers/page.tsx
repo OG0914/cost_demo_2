@@ -55,19 +55,22 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
-import { customers } from '@/lib/data'
+import { useCustomers } from '@/hooks/api/use-customers'
 import { useListFilters } from '@/hooks/forms/use-filters'
+import { Skeleton } from '@/components/ui/skeleton'
+import type { Customer } from '@cost/shared-types'
 
 const regions = ['华东', '华北', '华南', '西南', '华中', '西北', '东北']
 
 export default function CustomersPage() {
+  const { customers, isLoading } = useCustomers()
   const { searchTerm, setSearchTerm, filters, setFilter, filteredItems: filteredCustomers } = useListFilters(
-    customers,
+    customers ?? [],
     ['code', 'name']
   )
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [editingItem, setEditingItem] = useState<typeof customers[0] | null>(null)
+  const [editingItem, setEditingItem] = useState<Customer | null>(null)
   const [formData, setFormData] = useState({ code: '', name: '', region: '', note: '' })
 
   const handleAdd = () => {
@@ -76,7 +79,7 @@ export default function CustomersPage() {
     setDialogOpen(true)
   }
 
-  const handleEdit = (item: typeof customers[0]) => {
+  const handleEdit = (item: Customer) => {
     setEditingItem(item)
     setFormData({ code: item.code, name: item.name, region: item.region, note: item.note || '' })
     setDialogOpen(true)
@@ -102,6 +105,14 @@ export default function CustomersPage() {
 
   const handleImport = () => {
     toast.info('请选择Excel文件导入')
+  }
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-8">
+        <Skeleton className="h-96 w-full" />
+      </div>
+    )
   }
 
   return (
