@@ -1,3 +1,4 @@
+import 'dotenv/config'  // 加载环境变量
 import fastify from 'fastify'
 import cors from '@fastify/cors'
 import jwt from '@fastify/jwt'

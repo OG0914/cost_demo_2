@@ -44,7 +44,7 @@ const OLD_DB_CONFIG = {
 const NEW_DB_CONFIG = {
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '5432'),
-  database: 'cost_analysis_v2',  // 新数据库
+  database: 'cost_analysis_new',  // 新数据库
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || '1998',
 };

@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-12T07:23:19.553Z",
+  "timestamp": "2026-03-13T01:06:33.646Z",
   "options": {
     "batchSize": 1000,
     "enableTransaction": true,
@@ -13,91 +13,91 @@
       "oldCount": 8,
       "newCount": 8,
       "success": true,
-      "duration": 163
+      "duration": 199
     },
     {
       "table": "regulations",
       "oldCount": 3,
       "newCount": 3,
       "success": true,
-      "duration": 57
+      "duration": 72
     },
     {
       "table": "materials",
       "oldCount": 50,
       "newCount": 50,
       "success": true,
-      "duration": 926
+      "duration": 1176
     },
     {
       "table": "customers",
       "oldCount": 16,
       "newCount": 16,
       "success": true,
-      "duration": 291
+      "duration": 365
     },
     {
       "table": "models",
       "oldCount": 23,
       "newCount": 23,
       "success": true,
-      "duration": 425
+      "duration": 530
     },
     {
       "table": "bom_materials",
       "oldCount": 90,
       "newCount": 90,
       "success": true,
-      "duration": 1845
+      "duration": 1936
     },
     {
       "table": "packaging_configs",
       "oldCount": 63,
       "newCount": 63,
       "success": true,
-      "duration": 1440
+      "duration": 1350
     },
     {
       "table": "process_configs",
       "oldCount": 322,
       "newCount": 322,
       "success": true,
-      "duration": 7618
+      "duration": 7149
     },
     {
       "table": "packaging_materials",
       "oldCount": 92,
       "newCount": 92,
       "success": true,
-      "duration": 2140
+      "duration": 1675
     },
     {
       "table": "quotations",
       "oldCount": 29,
       "newCount": 0,
       "success": false,
-      "duration": 53
+      "duration": 57
     },
     {
       "table": "standard_costs",
       "oldCount": 1,
       "newCount": 1,
       "success": true,
-      "duration": 30
+      "duration": 27
     },
     {
       "table": "notifications",
       "oldCount": 0,
       "newCount": 0,
       "success": true,
-      "duration": 4
+      "duration": 5
     },
     {
       "table": "system_config",
       "oldCount": 34,
       "newCount": 31,
       "success": true,
-      "duration": 686
+      "duration": 536
     }
   ],
   "summary": {
