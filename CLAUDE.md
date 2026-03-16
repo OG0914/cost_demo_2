@@ -261,6 +261,157 @@ expect(mockReply.send).toHaveBeenCalledWith(
 
 ## Key Conventions
 
+### Git Worktree 使用规范
+
+使用 Git Worktree 进行并行开发和复杂功能隔离。
+
+**核心原则**: 系统化的目录选择 + 安全检查 = 可靠的开发隔离
+
+#### 使用场景
+
+**必须使用**:
+- 复杂功能开发（预计改动 >3 个文件）
+- 子代理并行开发任务
+- 执行实施计划前创建独立工作空间
+- 需要同时维护多个功能分支
+
+**可选使用**:
+- 快速实验性开发
+- 代码审查时查看其他分支
+
+**例外（需人工确认）**:
+- 仅修改文档的微小改动
+- 紧急热修复
+
+#### 目录选择策略
+
+优先级顺序（从高到低）：
+
+1. **已存在的目录** - `.worktrees/` 优先于 `worktrees/`
+2. **CLAUDE.md 配置** - 检查 `worktree.directory` 偏好设置
+3. **询问用户** - 在项目本地或全局位置之间选择
+
+**目录规范**:
+- 项目本地: `.worktrees/<name>/`（隐藏目录，优先选择）
+- 全局位置: `~/.config/superpowers/worktrees/<project-name>/`
+
+#### 创建流程
+
+**声明语**: "我将使用 using-git-worktrees skill 创建隔离工作空间。"
+
+**步骤 1: 选择目录位置**
+```bash
+# 检查现有目录
+ls -la .worktrees/ 2>/dev/null || ls -la worktrees/ 2>/dev/null
+
+# 检查 CLAUDE.md 偏好
+grep -i "worktree" CLAUDE.md
+```
+
+**步骤 2: 安全检查（项目本地目录）**
+```bash
+# 验证目录已被 git ignore
+git check-ignore -q .worktrees/ && echo "已忽略" || echo "未忽略"
+
+# 如未忽略，自动修复
+echo ".worktrees/" >> .gitignore
+git add .gitignore && git commit -m "chore: 添加 worktree 目录到 gitignore"
+```
+
+**步骤 3: 创建 Worktree**
+```bash
+# 使用 EnterWorktree 工具（推荐）
+# 工具会自动：
+# - 在指定目录创建 worktree
+# - 基于当前分支创建新分支
+# - 切换到新工作目录
+# - 执行项目初始化
+```
+
+**步骤 4: 项目初始化**
+
+根据项目类型自动检测并运行：
+
+| 项目类型 | 检测文件 | 初始化命令 |
+|---------|---------|-----------|
+| Node.js | `package.json` | `pnpm install` |
+| Rust | `Cargo.toml` | `cargo build` |
+| Python | `requirements.txt` | `pip install -r requirements.txt` |
+| Go | `go.mod` | `go mod download` |
+
+**步骤 5: 基线测试验证**
+```bash
+# 运行测试确保干净状态
+pnpm test
+
+# 验证：所有测试通过才能继续
+```
+
+#### 工作流程
+
+```
+主分支                    Worktree 分支
+   │                          │
+   ├── EnterWorktree ────────→│
+   │   (创建并切换)            │
+   │                          ├── 开发功能
+   │                          ├── 运行测试
+   │                          └── 提交更改
+   │                          │
+   ←── ExitWorktree ──────────│
+       (keep/remove)          │
+```
+
+#### 工具集成
+
+**EnterWorktree 工具**:
+- 创建新 worktree 并切换会话
+- 自动执行项目初始化
+- 运行基线测试
+
+**ExitWorktree 工具**:
+- `keep`: 保留 worktree 目录和分支，可稍后返回
+- `remove`: 删除 worktree 目录和分支（需确认无未提交更改）
+
+#### 安全检查清单
+
+创建 worktree 前必须验证：
+
+- [ ] 目录位置已确定（`.worktrees/` 优先）
+- [ ] 项目本地目录已被 `.gitignore` 包含
+- [ ] 主分支工作区干净（无未提交更改）
+- [ ] 基线测试通过
+- [ ] 项目初始化完成
+
+#### 决策指南
+
+**何时使用项目本地 worktree**:
+- 默认选择
+- 与主项目紧密关联的功能
+- 需要频繁参考主分支代码
+
+**何时使用全局 worktree**:
+- 跨多个项目共享代码
+- 磁盘空间有限
+- 需要长期维护的独立功能
+
+#### 反模式警示
+
+**立即停止并重新开始**：
+- 未验证 `.gitignore` 就创建项目本地 worktree
+- 跳过基线测试验证
+- 在测试失败状态下继续开发
+- 目录位置不明确时猜测
+
+#### Windows 环境注意事项
+
+- Worktree 路径使用正斜杠 (`/`) 或双反斜杠 (`\\`)
+- 避免在 worktree 中运行 Turbopack（已知 Windows 兼容性问题）
+- 确保磁盘有足够空间（monorepo 依赖较大）
+- 路径长度限制：尽量使用短路径名
+
+---
+
 ### Commit Rules
 
 **⚠️ 重要：每次 commit 前必须经过 Lucas 同意！**
