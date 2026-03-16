@@ -19,7 +19,7 @@ export function useStandardCosts(filters: StandardCostFilters = {}) {
     queryKey: ['standard-costs', filters],
     queryFn: async () => {
       const response = await standardCostApi.getList(filters)
-      return (response.data?.data ?? []) as StandardCost[]
+      return (response.data ?? []) as StandardCost[]
     },
   })
 
@@ -61,7 +61,7 @@ export function useStandardCost(id: string) {
     queryKey: ['standard-cost', id],
     queryFn: async () => {
       const response = await standardCostApi.getById(id)
-      return response.data?.data as StandardCost
+      return response.data as StandardCost
     },
     enabled: !!id,
   })

@@ -101,8 +101,8 @@ export function useQuotations(filters: QuotationFilters = {}) {
   })
 
   return {
-    quotations: data?.data ?? [],
-    meta: data?.meta,
+    quotations: data ?? [],
+    meta: undefined,
     isLoading,
     error,
     create: createMutation.mutate,

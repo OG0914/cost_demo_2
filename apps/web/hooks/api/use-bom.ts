@@ -69,7 +69,7 @@ export function useBom(modelId: string) {
 
   // 将BOM数据与物料数据关联
   const bomWithMaterials = (bomData ?? []).map((item: unknown) => {
-    const material = (materialsData?.data ?? []).find(
+    const material = (materialsData ?? []).find(
       (m: unknown) => (m as { id: string }).id === (item as { materialId: string }).materialId
     )
     return { ...(item as object), material }
@@ -77,8 +77,8 @@ export function useBom(modelId: string) {
 
   return {
     bom: bomWithMaterials,
-    materials: materialsData?.data ?? [],
-    models: modelsData?.data ?? [],
+    materials: materialsData ?? [],
+    models: modelsData ?? [],
     isLoading: isLoadingBom || isLoadingMaterials || isLoadingModels,
     error: bomError,
     create: createMutation.mutate,

@@ -19,9 +19,11 @@ export function usePackagingConfigs(modelId?: string) {
   const { data, isLoading, error } = useQuery({
     queryKey: ['packaging-configs', { modelId }],
     queryFn: async () => {
-      const response = await packagingApi.getList(modelId ? { modelId } : undefined)
+      if (!modelId) return []  // 未选型号返回空数组
+      const response = await packagingApi.getList({ modelId })
       return response.data
     },
+    enabled: !!modelId,  // 未选型号时不发起请求
   })
 
   const { data: modelsData, isLoading: isLoadingModels } = useQuery({
@@ -68,7 +70,7 @@ export function usePackagingConfigs(modelId?: string) {
 
   return {
     packagingConfigs: data ?? [],
-    models: modelsData?.data ?? [],
+    models: modelsData ?? [],
     isLoading: isLoading || isLoadingModels,
     error,
     create: createMutation.mutate,

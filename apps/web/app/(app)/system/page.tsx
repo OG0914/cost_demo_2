@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Table,
@@ -70,16 +71,9 @@ import {
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
 import { systemConfig } from '@/lib/data'
+import { useUsers } from '@/hooks/api'
+import type { User } from '@cost/shared-types'
 import type { Role } from '@/lib/types'
-
-// Mock data for users
-const users = [
-  { id: '1', username: 'admin', name: '张明', email: 'admin@company.com', role: 'admin' as Role, status: 'active', createdAt: '2024-01-01' },
-  { id: '2', username: 'reviewer1', name: '李华', email: 'lihua@company.com', role: 'reviewer' as Role, status: 'active', createdAt: '2024-01-15' },
-  { id: '3', username: 'sales1', name: '王芳', email: 'wangfang@company.com', role: 'salesperson' as Role, status: 'active', createdAt: '2024-02-01' },
-  { id: '4', username: 'purchase1', name: '赵强', email: 'zhaoqiang@company.com', role: 'purchaser' as Role, status: 'active', createdAt: '2024-02-15' },
-  { id: '5', username: 'producer1', name: '刘伟', email: 'liuwei@company.com', role: 'producer' as Role, status: 'inactive', createdAt: '2024-03-01' },
-]
 
 const roles = [
   { code: 'admin', name: '管理员', description: '系统最高权限', isSystem: true, userCount: 1 },
@@ -100,12 +94,13 @@ const roleLabels: Record<string, string> = {
 }
 
 export default function SystemPage() {
+  const { users, isLoading } = useUsers()
   const [searchTerm, setSearchTerm] = useState('')
   const [userDialogOpen, setUserDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false)
   const [configDialogOpen, setConfigDialogOpen] = useState(false)
-  const [editingUser, setEditingUser] = useState<typeof users[0] | null>(null)
+  const [editingUser, setEditingUser] = useState<User | null>(null)
   const [userFormData, setUserFormData] = useState({
     username: '',
     name: '',
@@ -122,7 +117,7 @@ export default function SystemPage() {
     lclBaseRate: systemConfig.lclBaseRate.toString(),
   })
 
-  const filteredUsers = users.filter(
+  const filteredUsers = (users || []).filter(
     (u) =>
       u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -135,7 +130,7 @@ export default function SystemPage() {
     setUserDialogOpen(true)
   }
 
-  const handleEditUser = (user: typeof users[0]) => {
+  const handleEditUser = (user: User) => {
     setEditingUser(user)
     setUserFormData({
       username: user.username,
@@ -172,7 +167,7 @@ export default function SystemPage() {
     setEditingUser(null)
   }
 
-  const handleToggleUserStatus = (user: typeof users[0]) => {
+  const handleToggleUserStatus = (user: User) => {
     toast.success(user.status === 'active' ? '用户已禁用' : '用户已启用')
   }
 
@@ -243,6 +238,16 @@ export default function SystemPage() {
                   />
                 </div>
               </div>
+
+              {isLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : (
 
               <div className="rounded-md border">
                 <Table>
@@ -327,6 +332,7 @@ export default function SystemPage() {
                   </TableBody>
                 </Table>
               </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
