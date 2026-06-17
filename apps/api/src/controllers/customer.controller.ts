@@ -54,7 +54,7 @@ export class CustomerController {
       createdBy: userId,
     }
     const customer = await customerService.create(input)
-    return sendSuccess(reply, customer)
+    return sendSuccess(reply, customer, undefined, 201)
   }
 
   async update(request: FastifyRequest, reply: FastifyReply): Promise<void> {

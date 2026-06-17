@@ -37,7 +37,7 @@ export class PackagingController {
 
     try {
       const config = await packagingService.create(body)
-      return sendSuccess(reply, config)
+      return sendSuccess(reply, config, undefined, 201)
     } catch (error) {
       if (error instanceof Error && error.message === 'INVALID_MODEL') {
         return sendError(reply, 400, 'INVALID_MODEL', '型号不存在')
@@ -109,7 +109,7 @@ export class PackagingController {
         unit: body.unit as 'piece' | 'dozen',
         sortOrder: body.sortOrder,
       })
-      return sendSuccess(reply, process)
+      return sendSuccess(reply, process, undefined, 201)
     } catch (error) {
       if (error instanceof Error) {
         if (error.message === 'INVALID_CONFIG') {

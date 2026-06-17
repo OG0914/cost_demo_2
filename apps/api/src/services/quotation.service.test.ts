@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { QuotationService } from './quotation.service.js'
 import { quotationRepository } from '../repositories/quotation.repository.js'
+import { sequenceService } from '../services/sequence.service.js'
 
 vi.mock('../repositories/quotation.repository.js', () => ({
   quotationRepository: {
@@ -18,6 +19,12 @@ vi.mock('../repositories/quotation.repository.js', () => ({
 
 vi.mock('../utils/cost-calculator.js', () => ({
   calculateCosts: vi.fn(),
+}))
+
+vi.mock('../services/sequence.service.js', () => ({
+  sequenceService: {
+    nextNumber: vi.fn(),
+  },
 }))
 
 describe('QuotationService', () => {
@@ -77,7 +84,7 @@ describe('QuotationService', () => {
 
   describe('generateQuotationNo', () => {
     it('should generate first quotation number for year', async () => {
-      vi.mocked(quotationRepository.findLastByYear).mockResolvedValue(null)
+      vi.mocked(sequenceService.nextNumber).mockResolvedValue(1)
 
       const result = await service.generateQuotationNo()
 
@@ -86,13 +93,12 @@ describe('QuotationService', () => {
     })
 
     it('should increment sequence number', async () => {
-      vi.mocked(quotationRepository.findLastByYear).mockResolvedValue({
-        quotationNo: 'QT-2024-0005',
-      } as never)
+      vi.mocked(sequenceService.nextNumber).mockResolvedValue(6)
 
       const result = await service.generateQuotationNo()
 
-      expect(result).toMatch(/QT-\d{4}-0006/)
+      const year = new Date().getFullYear()
+      expect(result).toBe(`QT-${year}-0006`)
     })
   })
 

@@ -19,10 +19,10 @@ export function sendError(
   })
 }
 
-export function sendSuccess<T>(reply: FastifyReply, data: T, meta?: ApiResponse<T>['meta']) {
+export function sendSuccess<T>(reply: FastifyReply, data: T, meta?: ApiResponse<T>['meta'], status = 200) {
   const response: ApiResponse<T> = { success: true, data }
   if (meta) response.meta = meta
-  return reply.send(response)
+  return reply.code(status).send(response)
 }
 
 export function sendNotFound(reply: FastifyReply, resource: string) {

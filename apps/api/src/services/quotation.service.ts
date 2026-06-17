@@ -1,6 +1,7 @@
 import { QuotationStatus, type Prisma } from '@cost/database'
 import { BaseService } from './base.service.js'
 import { quotationRepository } from '../repositories/quotation.repository.js'
+import { sequenceService } from './sequence.service.js'
 import { calculateCosts, type CostCalculationInput, type CostCalculationResult } from '../utils/cost-calculator.js'
 import type { CreateQuotationInput, UpdateQuotationInput } from '../lib/schemas.js'
 
@@ -52,13 +53,9 @@ export class QuotationService extends BaseService {
 
   async generateQuotationNo(): Promise<string> {
     const year = new Date().getFullYear()
-    const lastQuotation = await quotationRepository.findLastByYear(year)
-
-    const seq = lastQuotation
-      ? parseInt(lastQuotation.quotationNo.split('-')[2] ?? '0', 10) + 1
-      : 1
-
-    return `QT-${year}-${seq.toString().padStart(4, '0')}`
+    const prefix = `QT-${year}`
+    const seq = await sequenceService.nextNumber(prefix)
+    return `${prefix}-${seq.toString().padStart(4, '0')}`
   }
 
   async create(userId: string, input: CreateQuotationInput) {

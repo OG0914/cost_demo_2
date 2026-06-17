@@ -73,7 +73,7 @@ export class QuotationController {
     }
 
     const quotation = await quotationService.create(userId, validation.data)
-    return sendSuccess(reply, quotation)
+    return sendSuccess(reply, quotation, undefined, 201)
   }
 
   update = async (request: FastifyRequest, reply: FastifyReply) => {

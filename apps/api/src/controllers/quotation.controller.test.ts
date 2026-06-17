@@ -17,11 +17,11 @@ vi.mock('../services/quotation.service.js', () => ({
   },
 }))
 
-vi.mock('../utils/http-response.js', () => ({
-  sendSuccess: vi.fn((reply, data, meta) => {
+vi.mock('../lib/response-helpers.js', () => ({
+  sendSuccess: vi.fn((reply, data, meta, status = 200) => {
     const response: { success: boolean; data: unknown; meta?: unknown } = { success: true, data }
     if (meta) response.meta = meta
-    return reply.send(response)
+    return reply.code(status).send(response)
   }),
   sendError: vi.fn((reply, status, code, message) => {
     return reply.code(status).send({ success: false, error: { code, message } })
@@ -99,12 +99,12 @@ describe('QuotationController', () => {
   describe('create', () => {
     it('should create quotation with valid data', async () => {
       const input = {
-        customerId: 'cust1',
-        regulationId: 'reg1',
-        modelId: 'model1',
-        packagingConfigId: 'pack1',
+        customerId: '00000000-0000-0000-0000-000000000001',
+        regulationId: '00000000-0000-0000-0000-000000000002',
+        modelId: '00000000-0000-0000-0000-000000000003',
+        packagingConfigId: '00000000-0000-0000-0000-000000000004',
         saleType: 'domestic',
-        shippingType: 'land',
+        shippingType: 'fcl20',
         quantity: 100,
         materialCost: 1000,
         packagingCost: 200,
@@ -117,7 +117,7 @@ describe('QuotationController', () => {
       vi.mocked(quotationService.create).mockResolvedValue({ id: '1', ...input, quotationNo: 'QT-2024-0001', status: 'draft' })
       mockRequest = {
         body: input,
-        user: { userId: 'user1' },
+        user: { userId: 'user1', username: 'testuser', role: 'admin' },
       }
 
       await controller.create(mockRequest as FastifyRequest, mockReply as FastifyReply)
@@ -214,11 +214,11 @@ describe('QuotationController', () => {
   describe('calculate', () => {
     it('should calculate costs', async () => {
       const input = {
-        modelId: 'model1',
-        packagingConfigId: 'pack1',
+        modelId: '00000000-0000-0000-0000-000000000003',
+        packagingConfigId: '00000000-0000-0000-0000-000000000004',
         quantity: 100,
         saleType: 'domestic',
-        shippingType: 'land',
+        shippingType: 'fcl20',
       }
       const mockResult = { totalCost: 2000, materialCost: 1000, packagingCost: 200, processCost: 300, shippingCost: 400, adminFee: 50, vat: 130 }
       vi.mocked(quotationService.calculate).mockResolvedValue(mockResult)

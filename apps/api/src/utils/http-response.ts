@@ -7,10 +7,10 @@ export interface ApiResponse<T> {
   meta?: { page: number; pageSize: number; total: number; totalPages: number }
 }
 
-export function sendSuccess<T>(reply: FastifyReply, data: T, meta?: ApiResponse<T>['meta']) {
+export function sendSuccess<T>(reply: FastifyReply, data: T, meta?: ApiResponse<T>['meta'], status = 200) {
   const response: ApiResponse<T> = { success: true, data }
   if (meta) response.meta = meta
-  return reply.send(response)
+  return reply.code(status).send(response)
 }
 
 export function sendError(reply: FastifyReply, status: number, code: string, message: string) {
