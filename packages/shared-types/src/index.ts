@@ -84,6 +84,13 @@ export interface Quotation {
   updatedAt?: string
 }
 
+export interface SystemConfig {
+  key: string
+  value: Record<string, unknown>
+  updatedAt: string
+  updatedBy?: string
+}
+
 export interface PaginationMeta {
   page: number
   pageSize: number

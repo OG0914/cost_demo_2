@@ -175,6 +175,16 @@ export function validateSchema<T>(schema: z.ZodSchema<T>, data: unknown): { succ
   return { success: false, error: result.error.errors[0].message }
 }
 
+// ==================== SystemConfig Schemas ====================
+
+export const systemConfigValueSchema = z.record(z.any())
+
+export const updateSystemConfigSchema = z.object({
+  value: systemConfigValueSchema,
+})
+
+export type UpdateSystemConfigInput = z.infer<typeof updateSystemConfigSchema>
+
 export function formatZodError(error: z.ZodError): string {
   return error.errors[0].message
 }

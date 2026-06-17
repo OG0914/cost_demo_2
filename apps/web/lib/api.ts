@@ -36,6 +36,7 @@ import type {
   CalculateCostResponse,
   CreateStandardCostRequest,
   DashboardStatsDto,
+  SystemConfig,
 } from '@cost/shared-types'
 import { parseApiError, isRetryableError, ErrorCode } from './error-handler'
 
@@ -280,6 +281,16 @@ export const notificationApi = {
     apiClient.get('/notifications/unread-count'),
   process: (id: string): Promise<ApiResponse<unknown>> =>
     apiClient.put(`/notifications/${id}/process`),
+}
+
+// 系统配置 API
+export const systemConfigApi = {
+  getList: (): Promise<ApiResponse<SystemConfig[]>> =>
+    apiClient.get('/system-configs'),
+  getByKey: (key: string): Promise<ApiResponse<SystemConfig>> =>
+    apiClient.get(`/system-configs/${key}`),
+  update: (key: string, value: Record<string, unknown>): Promise<ApiResponse<SystemConfig>> =>
+    apiClient.put(`/system-configs/${key}`, { value }),
 }
 
 // 仪表盘 API

@@ -82,7 +82,6 @@ const errorMessages: Record<ErrorCode | string, string> = {
   [ErrorCode.EXTERNAL_SERVICE_ERROR]: '外部服务调用失败',
   [ErrorCode.TIMEOUT_ERROR]: '请求超时，请稍后重试',
   NETWORK_ERROR: '网络连接失败，请检查网络设置',
-  TIMEOUT_ERROR: '请求超时，请稍后重试',
   UNKNOWN_ERROR: '发生未知错误，请稍后重试',
 }
 

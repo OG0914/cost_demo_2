@@ -11,6 +11,7 @@ import { quotationRoutes } from './quotations.routes.js'
 import { standardCostRoutes } from './standard-costs.routes.js'
 import { notificationRoutes } from './notifications.routes.js'
 import { dashboardRoutes } from './dashboard.routes.js'
+import { systemConfigRoutes } from './system-config.routes.js'
 
 export const routes = async (app: FastifyInstance) => {
   await app.register(authRoutes, { prefix: '/auth' })
@@ -25,4 +26,5 @@ export const routes = async (app: FastifyInstance) => {
   await app.register(standardCostRoutes, { prefix: '/standard-costs' })
   await app.register(notificationRoutes, { prefix: '/notifications' })
   await app.register(dashboardRoutes, { prefix: '/dashboard' })
+  await app.register(systemConfigRoutes, { prefix: '/system-configs' })
 }
