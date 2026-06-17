@@ -1,6 +1,7 @@
 import { BaseService } from './base.service.js'
 import { materialRepository, type MaterialFilter, type PaginationParams } from '../repositories/material.repository.js'
 import type { CreateMaterialInput, UpdateMaterialInput } from '../lib/schemas.js'
+import type { Prisma } from '@cost/database'
 
 export class MaterialService extends BaseService {
   private repository = materialRepository
@@ -44,7 +45,7 @@ export class MaterialService extends BaseService {
     })
   }
 
-  async update(id: string, input: UpdateMaterialInput) {
+  async update(id: string, input: UpdateMaterialInput, userId: string) {
     const existing = await this.repository.findById(id)
     if (!existing) {
       throw new Error('NOT_FOUND')
@@ -57,22 +58,27 @@ export class MaterialService extends BaseService {
       }
     }
 
-    const updated = await this.repository.update(id, {
-      materialNo: input.materialNo,
-      name: input.name,
-      unit: input.unit,
-      price: input.price,
-      currency: input.currency,
-      manufacturer: input.manufacturer,
-      category: input.category,
-      note: input.note,
+    return await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.material.update({
+        where: { id },
+        data: {
+          materialNo: input.materialNo,
+          name: input.name,
+          unit: input.unit,
+          price: input.price,
+          currency: input.currency,
+          manufacturer: input.manufacturer,
+          category: input.category,
+          note: input.note,
+        },
+      })
+
+      if (input.price !== undefined && input.price !== Number(existing.price)) {
+        await this.createPriceChangeNotification(tx, id, Number(existing.price), input.price, userId)
+      }
+
+      return updated
     })
-
-    if (input.price !== undefined && input.price !== Number(existing.price)) {
-      await this.createPriceChangeNotification(id, Number(existing.price), input.price)
-    }
-
-    return updated
   }
 
   async delete(id: string) {
@@ -84,13 +90,19 @@ export class MaterialService extends BaseService {
     await this.repository.delete(id)
   }
 
-  private async createPriceChangeNotification(materialId: string, oldPrice: number, newPrice: number) {
-    const affectedBoms = await this.prisma.bomMaterial.findMany({
+  private async createPriceChangeNotification(
+    tx: Prisma.TransactionClient,
+    materialId: string,
+    oldPrice: number,
+    newPrice: number,
+    userId: string,
+  ) {
+    const affectedBoms = await tx.bomMaterial.findMany({
       where: { materialId },
       include: { model: true },
     })
 
-    const packagingConfigIds = await this.prisma.packagingConfig.findMany({
+    const packagingConfigIds = await tx.packagingConfig.findMany({
       where: {
         modelId: { in: affectedBoms.map((b) => b.modelId) },
       },
@@ -98,7 +110,7 @@ export class MaterialService extends BaseService {
     })
 
     if (packagingConfigIds.length > 0) {
-      await this.prisma.notification.create({
+      await tx.notification.create({
         data: {
           type: 'price_change',
           status: 'pending',
@@ -106,7 +118,7 @@ export class MaterialService extends BaseService {
           oldPrice,
           newPrice,
           affectedStandardCosts: packagingConfigIds.map((p) => p.id),
-          triggeredBy: '',
+          triggeredBy: userId,
         },
       })
     }

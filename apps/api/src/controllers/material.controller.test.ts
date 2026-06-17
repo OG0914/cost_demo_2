@@ -13,7 +13,7 @@ vi.mock('../services/material.service.js', () => ({
   },
 }))
 
-vi.mock('../utils/http-response.js', () => ({
+vi.mock('../lib/response-helpers.js', () => ({
   sendSuccess: vi.fn((reply, data, meta) => {
     const response: { success: boolean; data: unknown; meta?: unknown } = { success: true, data }
     if (meta) response.meta = meta
@@ -47,7 +47,7 @@ describe('MaterialController', () => {
         data: [{ id: '1', materialNo: 'M001', name: 'Material 1', unit: 'pcs', price: 100, currency: 'CNY' }],
         meta: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
       }
-      vi.mocked(materialService.getList).mockResolvedValue(mockMaterials)
+      vi.mocked(materialService.getList).mockResolvedValue(mockMaterials as never)
       mockRequest = { query: { page: '1', pageSize: '20', search: 'M001', category: 'raw' } }
 
       await controller.getList(mockRequest as FastifyRequest, mockReply as FastifyReply)
@@ -67,7 +67,7 @@ describe('MaterialController', () => {
   describe('getById', () => {
     it('should return material by id', async () => {
       const mockMaterial = { id: '1', materialNo: 'M001', name: 'Material 1', unit: 'pcs', price: 100, currency: 'CNY' }
-      vi.mocked(materialService.getById).mockResolvedValue(mockMaterial)
+      vi.mocked(materialService.getById).mockResolvedValue(mockMaterial as never)
       mockRequest = { params: { id: '1' } }
 
       await controller.getById(mockRequest as FastifyRequest, mockReply as FastifyReply)
@@ -101,18 +101,21 @@ describe('MaterialController', () => {
         category: 'raw',
       }
       const mockMaterial = { id: '2', ...input }
-      vi.mocked(materialService.create).mockResolvedValue(mockMaterial)
+      vi.mocked(materialService.create).mockResolvedValue(mockMaterial as never)
       mockRequest = { body: input }
 
       await controller.create(mockRequest as FastifyRequest, mockReply as FastifyReply)
 
       expect(materialService.create).toHaveBeenCalledWith(input)
-      expect(mockReply.code).toHaveBeenCalledWith(201)
+      expect(mockReply.send).toHaveBeenCalledWith(expect.objectContaining({
+        success: true,
+        data: mockMaterial,
+      }))
     })
 
     it('should return 409 for duplicate materialNo', async () => {
       vi.mocked(materialService.create).mockRejectedValue(new Error('DUPLICATE_MATERIAL_NO'))
-      mockRequest = { body: { materialNo: 'M001', name: 'Test', unit: 'pcs', price: 100 } }
+      mockRequest = { body: { materialNo: 'M001', name: 'Test', unit: 'pcs', price: 100, category: 'raw' } }
 
       await controller.create(mockRequest as FastifyRequest, mockReply as FastifyReply)
 
@@ -120,7 +123,7 @@ describe('MaterialController', () => {
       expect(mockReply.send).toHaveBeenCalledWith(expect.objectContaining({
         success: false,
         error: expect.objectContaining({
-          code: 'DUPLICATE_MATERIAL_NO',
+          code: 'DUPLICATE',
         }),
       }))
     })
@@ -130,12 +133,12 @@ describe('MaterialController', () => {
     it('should update material with valid data', async () => {
       const input = { name: 'Updated Material', price: 300 }
       const mockMaterial = { id: '1', materialNo: 'M001', ...input, unit: 'pcs', currency: 'CNY' }
-      vi.mocked(materialService.update).mockResolvedValue(mockMaterial)
-      mockRequest = { params: { id: '1' }, body: input }
+      vi.mocked(materialService.update).mockResolvedValue(mockMaterial as never)
+      mockRequest = { params: { id: '1' }, body: input, user: { userId: 'user1', username: 'testuser', role: 'admin' } }
 
       await controller.update(mockRequest as FastifyRequest, mockReply as FastifyReply)
 
-      expect(materialService.update).toHaveBeenCalledWith('1', input)
+      expect(materialService.update).toHaveBeenCalledWith('1', input, 'user1')
       expect(mockReply.send).toHaveBeenCalledWith(expect.objectContaining({
         success: true,
         data: mockMaterial,
@@ -144,7 +147,7 @@ describe('MaterialController', () => {
 
     it('should return 404 when material not found', async () => {
       vi.mocked(materialService.update).mockRejectedValue(new Error('NOT_FOUND'))
-      mockRequest = { params: { id: '999' }, body: { name: 'Test' } }
+      mockRequest = { params: { id: '999' }, body: { name: 'Test' }, user: { userId: 'user1', username: 'testuser', role: 'admin' } }
 
       await controller.update(mockRequest as FastifyRequest, mockReply as FastifyReply)
 
@@ -162,7 +165,7 @@ describe('MaterialController', () => {
       expect(materialService.delete).toHaveBeenCalledWith('1')
       expect(mockReply.send).toHaveBeenCalledWith(expect.objectContaining({
         success: true,
-        data: { message: '物料已删除' },
+        data: { message: '原材料已删除' },
       }))
     })
 

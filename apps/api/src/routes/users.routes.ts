@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import { userController } from '../controllers/user.controller.js'
+import { requireRole } from '../plugins/role-check.js'
 import {
   userSchema,
   errorResponseSchema,
@@ -94,7 +95,7 @@ export const userRoutes = async (app: FastifyInstance): Promise<void> => {
 
   // POST /api/v1/users
   app.post('/', {
-    onRequest: [app.authenticate],
+    onRequest: [app.authenticate, requireRole('admin')],
     schema: {
       tags: ['Users'],
       summary: '创建用户',
@@ -124,7 +125,7 @@ export const userRoutes = async (app: FastifyInstance): Promise<void> => {
 
   // PUT /api/v1/users/:id
   app.put('/:id', {
-    onRequest: [app.authenticate],
+    onRequest: [app.authenticate, requireRole('admin')],
     schema: {
       tags: ['Users'],
       summary: '更新用户',
@@ -159,7 +160,7 @@ export const userRoutes = async (app: FastifyInstance): Promise<void> => {
 
   // DELETE /api/v1/users/:id
   app.delete('/:id', {
-    onRequest: [app.authenticate],
+    onRequest: [app.authenticate, requireRole('admin')],
     schema: {
       tags: ['Users'],
       summary: '删除用户',

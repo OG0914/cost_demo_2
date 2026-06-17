@@ -228,50 +228,52 @@ export const standardCostRoutes = async (app: FastifyInstance) => {
       })
     }
 
-    // 获取当前版本号
-    const lastVersion = await prisma.standardCost.findFirst({
-      where: {
-        packagingConfigId,
-        saleType: saleType as 'domestic' | 'export',
-      },
-      orderBy: { version: 'desc' },
-    })
+    const standardCost = await prisma.$transaction(async (tx) => {
+      // 获取当前版本号（必须在事务内查询以保证并发安全）
+      const lastVersion = await tx.standardCost.findFirst({
+        where: {
+          packagingConfigId,
+          saleType: saleType as 'domestic' | 'export',
+        },
+        orderBy: { version: 'desc' },
+      })
 
-    // 禁用之前的当前版本
-    await prisma.standardCost.updateMany({
-      where: {
-        packagingConfigId,
-        saleType: saleType as 'domestic' | 'export',
-        isCurrent: true,
-      },
-      data: { isCurrent: false },
-    })
+      // 禁用之前的当前版本
+      await tx.standardCost.updateMany({
+        where: {
+          packagingConfigId,
+          saleType: saleType as 'domestic' | 'export',
+          isCurrent: true,
+        },
+        data: { isCurrent: false },
+      })
 
-    const standardCost = await prisma.standardCost.create({
-      data: {
-        packagingConfigId,
-        saleType: saleType as 'domestic' | 'export',
-        version: (lastVersion?.version || 0) + 1,
-        isCurrent: true,
-        materialCost,
-        packagingCost,
-        processCost,
-        shippingCost,
-        adminFee,
-        vat,
-        totalCost,
-        setBy: userId,
-      },
-      include: {
-        packagingConfig: {
-          include: {
-            model: true,
+      return tx.standardCost.create({
+        data: {
+          packagingConfigId,
+          saleType: saleType as 'domestic' | 'export',
+          version: (lastVersion?.version || 0) + 1,
+          isCurrent: true,
+          materialCost,
+          packagingCost,
+          processCost,
+          shippingCost,
+          adminFee,
+          vat,
+          totalCost,
+          setBy: userId,
+        },
+        include: {
+          packagingConfig: {
+            include: {
+              model: true,
+            },
+          },
+          setByUser: {
+            select: { id: true, name: true },
           },
         },
-        setByUser: {
-          select: { id: true, name: true },
-        },
-      },
+      })
     })
 
     return { success: true, data: standardCost }
@@ -320,34 +322,36 @@ export const standardCostRoutes = async (app: FastifyInstance) => {
       })
     }
 
-    // 禁用同类型的其他当前版本
-    await prisma.standardCost.updateMany({
-      where: {
-        packagingConfigId: existing.packagingConfigId,
-        saleType: existing.saleType,
-        isCurrent: true,
-        id: { not: id },
-      },
-      data: { isCurrent: false },
-    })
+    // 禁用同类型的其他当前版本并设置当前版本（事务包裹保证并发安全）
+    const standardCost = await prisma.$transaction(async (tx) => {
+      await tx.standardCost.updateMany({
+        where: {
+          packagingConfigId: existing.packagingConfigId,
+          saleType: existing.saleType,
+          isCurrent: true,
+          id: { not: id },
+        },
+        data: { isCurrent: false },
+      })
 
-    const standardCost = await prisma.standardCost.update({
-      where: { id },
-      data: {
-        isCurrent: true,
-        setBy: userId,
-        setAt: new Date(),
-      },
-      include: {
-        packagingConfig: {
-          include: {
-            model: true,
+      return tx.standardCost.update({
+        where: { id },
+        data: {
+          isCurrent: true,
+          setBy: userId,
+          setAt: new Date(),
+        },
+        include: {
+          packagingConfig: {
+            include: {
+              model: true,
+            },
+          },
+          setByUser: {
+            select: { id: true, name: true },
           },
         },
-        setByUser: {
-          select: { id: true, name: true },
-        },
-      },
+      })
     })
 
     return { success: true, data: standardCost }

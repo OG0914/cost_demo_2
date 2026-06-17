@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import { materialController } from '../controllers/material.controller.js'
+import { requireRole } from '../plugins/role-check.js'
 import {
   materialSchema,
   createMaterialRequestSchema,
@@ -73,7 +74,7 @@ export const materialRoutes = async (app: FastifyInstance) => {
 
   // POST /api/v1/materials
   app.post('/', {
-    onRequest: [app.authenticate],
+    onRequest: [app.authenticate, requireRole('admin', 'purchaser')],
     schema: {
       tags: ['Materials'],
       summary: '创建物料',
@@ -103,7 +104,7 @@ export const materialRoutes = async (app: FastifyInstance) => {
 
   // PUT /api/v1/materials/:id
   app.put('/:id', {
-    onRequest: [app.authenticate],
+    onRequest: [app.authenticate, requireRole('admin', 'purchaser')],
     schema: {
       tags: ['Materials'],
       summary: '更新物料',
@@ -138,7 +139,7 @@ export const materialRoutes = async (app: FastifyInstance) => {
 
   // DELETE /api/v1/materials/:id
   app.delete('/:id', {
-    onRequest: [app.authenticate],
+    onRequest: [app.authenticate, requireRole('admin', 'purchaser')],
     schema: {
       tags: ['Materials'],
       summary: '删除物料',

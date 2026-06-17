@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import { quotationController } from '../controllers/quotation.controller.js'
+import { requireRole } from '../plugins/role-check.js'
 import {
   quotationSchema,
   createQuotationRequestSchema,
@@ -287,7 +288,7 @@ export const quotationRoutes = async (app: FastifyInstance) => {
 
   // POST /api/v1/quotations/:id/approve
   app.post('/:id/approve', {
-    onRequest: [app.authenticate],
+    onRequest: [app.authenticate, requireRole('admin', 'reviewer')],
     schema: {
       tags: ['Quotations'],
       summary: '审批通过报价单',
@@ -317,7 +318,7 @@ export const quotationRoutes = async (app: FastifyInstance) => {
 
   // POST /api/v1/quotations/:id/reject
   app.post('/:id/reject', {
-    onRequest: [app.authenticate],
+    onRequest: [app.authenticate, requireRole('admin', 'reviewer')],
     schema: {
       tags: ['Quotations'],
       summary: '驳回报价单',

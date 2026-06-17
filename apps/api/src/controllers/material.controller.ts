@@ -53,7 +53,8 @@ export class MaterialController {
     }
 
     try {
-      const material = await materialService.update(id, validation.data)
+      const userId = (request.user as { userId: string }).userId
+      const material = await materialService.update(id, validation.data, userId)
       return sendSuccess(reply, material)
     } catch (error) {
       if (error instanceof Error) {

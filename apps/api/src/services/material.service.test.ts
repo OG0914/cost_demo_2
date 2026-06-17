@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { MaterialService } from './material.service.js'
 import { materialRepository } from '../repositories/material.repository.js'
+import { prisma } from '@cost/database'
 
 // Mock the repository
 vi.mock('../repositories/material.repository.js', () => ({
@@ -16,20 +17,21 @@ vi.mock('../repositories/material.repository.js', () => ({
 }))
 
 // Mock prisma
-vi.mock('@cost/database', () => ({
-  prisma: {
-    bomMaterial: {
-      findMany: vi.fn(),
+vi.mock('@cost/database', () => {
+  const mockPrisma = {
+    material: { update: vi.fn() },
+    bomMaterial: { findMany: vi.fn() },
+    packagingConfig: { findMany: vi.fn() },
+    notification: { create: vi.fn() },
+  }
+  return {
+    prisma: {
+      $transaction: vi.fn(async (fn: (tx: typeof mockPrisma) => Promise<unknown>) => fn(mockPrisma)),
+      ...mockPrisma,
     },
-    packagingConfig: {
-      findMany: vi.fn(),
-    },
-    notification: {
-      create: vi.fn(),
-    },
-  },
-  PrismaClient: vi.fn(),
-}))
+    PrismaClient: vi.fn(),
+  }
+})
 
 describe('MaterialService', () => {
   let service: MaterialService
@@ -41,7 +43,7 @@ describe('MaterialService', () => {
 
   describe('getList', () => {
     it('should return paginated material list', async () => {
-      const materials = [{ id: '1', materialNo: 'M001', name: 'Material 1', unit: 'pcs', price: 100, currency: 'CNY' }]
+      const materials = [{ id: '1', materialNo: 'M001', name: 'Material 1', unit: 'pcs', price: 100, currency: 'CNY' }] as never
       vi.mocked(materialRepository.findMany).mockResolvedValue(materials)
       vi.mocked(materialRepository.count).mockResolvedValue(1)
 
@@ -68,7 +70,7 @@ describe('MaterialService', () => {
 
   describe('getById', () => {
     it('should return material by id', async () => {
-      const mockMaterial = { id: '1', materialNo: 'M001', name: 'Material 1', unit: 'pcs', price: 100, currency: 'CNY' }
+      const mockMaterial = { id: '1', materialNo: 'M001', name: 'Material 1', unit: 'pcs', price: 100, currency: 'CNY' } as never
       vi.mocked(materialRepository.findById).mockResolvedValue(mockMaterial)
 
       const result = await service.getById('1')
@@ -85,12 +87,12 @@ describe('MaterialService', () => {
         name: 'New Material',
         unit: 'pcs',
         price: 100,
-        currency: 'CNY',
+        currency: 'CNY' as const,
         manufacturer: 'Test Corp',
         category: 'raw',
         note: 'Test note',
       }
-      const mockMaterial = { id: '1', ...input }
+      const mockMaterial = { id: '1', ...input } as never
       vi.mocked(materialRepository.findByMaterialNo).mockResolvedValue(null)
       vi.mocked(materialRepository.create).mockResolvedValue(mockMaterial)
 
@@ -110,6 +112,7 @@ describe('MaterialService', () => {
         name: 'New Material',
         unit: 'pcs',
         price: 100,
+        category: 'raw',
       }
       vi.mocked(materialRepository.findByMaterialNo).mockResolvedValue(null)
       vi.mocked(materialRepository.create).mockResolvedValue({} as never)
@@ -127,6 +130,7 @@ describe('MaterialService', () => {
         name: 'New Material',
         unit: 'pcs',
         price: 100,
+        category: 'raw',
       }
       vi.mocked(materialRepository.findByMaterialNo).mockResolvedValue({ id: '1', materialNo: 'M001' } as never)
 
@@ -138,18 +142,20 @@ describe('MaterialService', () => {
     it('should update material when found', async () => {
       const input = { name: 'Updated Name', price: 200 }
       const existingMaterial = { id: '1', materialNo: 'M001', name: 'Old Name', price: 100, currency: 'CNY' }
-      const { prisma } = await import('@cost/database')
       vi.mocked(materialRepository.findById).mockResolvedValue(existingMaterial as never)
       vi.mocked(materialRepository.findByMaterialNo).mockResolvedValue(null)
-      vi.mocked(materialRepository.update).mockResolvedValue({ ...existingMaterial, ...input } as never)
+      vi.mocked(prisma.material.update).mockResolvedValue(({ ...existingMaterial, ...input }) as never)
       vi.mocked(prisma.bomMaterial.findMany).mockResolvedValue([])
       vi.mocked(prisma.packagingConfig.findMany).mockResolvedValue([])
 
-      const result = await service.update('1', input)
+      const result = await service.update('1', input, 'user1')
 
-      expect(materialRepository.update).toHaveBeenCalledWith('1', expect.objectContaining({
-        name: 'Updated Name',
-        price: 200,
+      expect(prisma.material.update).toHaveBeenCalledWith(expect.objectContaining({
+        where: { id: '1' },
+        data: expect.objectContaining({
+          name: 'Updated Name',
+          price: 200,
+        }),
       }))
       expect(result.name).toBe('Updated Name')
     })
@@ -157,7 +163,7 @@ describe('MaterialService', () => {
     it('should throw NOT_FOUND when material does not exist', async () => {
       vi.mocked(materialRepository.findById).mockResolvedValue(null)
 
-      await expect(service.update('999', { name: 'Test' })).rejects.toThrow('NOT_FOUND')
+      await expect(service.update('999', { name: 'Test' }, 'user1')).rejects.toThrow('NOT_FOUND')
     })
 
     it('should throw DUPLICATE_MATERIAL_NO when new materialNo conflicts', async () => {
@@ -166,7 +172,7 @@ describe('MaterialService', () => {
       vi.mocked(materialRepository.findById).mockResolvedValue(existingMaterial as never)
       vi.mocked(materialRepository.findByMaterialNo).mockResolvedValue({ id: '2', materialNo: 'M002' } as never)
 
-      await expect(service.update('1', input)).rejects.toThrow('DUPLICATE_MATERIAL_NO')
+      await expect(service.update('1', input, 'user1')).rejects.toThrow('DUPLICATE_MATERIAL_NO')
     })
 
     it('should allow updating to same materialNo', async () => {
@@ -174,17 +180,17 @@ describe('MaterialService', () => {
       const existingMaterial = { id: '1', materialNo: 'M001', name: 'Material 1', price: 100, currency: 'CNY' }
       vi.mocked(materialRepository.findById).mockResolvedValue(existingMaterial as never)
       vi.mocked(materialRepository.findByMaterialNo).mockResolvedValue(existingMaterial as never)
-      vi.mocked(materialRepository.update).mockResolvedValue({} as never)
+      vi.mocked(prisma.material.update).mockResolvedValue({} as never)
 
-      await service.update('1', input)
+      await service.update('1', input, 'user1')
 
-      expect(materialRepository.update).toHaveBeenCalled()
+      expect(prisma.material.update).toHaveBeenCalled()
     })
   })
 
   describe('delete', () => {
     it('should delete material when found', async () => {
-      const existingMaterial = { id: '1', materialNo: 'M001' }
+      const existingMaterial = { id: '1', materialNo: 'M001' } as never
       vi.mocked(materialRepository.findById).mockResolvedValue(existingMaterial as never)
       vi.mocked(materialRepository.delete).mockResolvedValue(undefined)
 
