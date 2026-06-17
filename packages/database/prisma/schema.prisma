@@ -84,6 +84,8 @@ model Customer {
   createdByUser User @relation("CreatedCustomers", fields: [createdBy], references: [id])
   updatedByUser User @relation("UpdatedCustomers", fields: [updatedBy], references: [id])
 
+  @@index([createdBy])
+  @@index([updatedBy])
   @@map("customers")
 }
 
@@ -131,6 +133,7 @@ model Model {
   packagingConfigs PackagingConfig[]
   quotations    Quotation[]
 
+  @@index([regulationId])
   @@map("models")
 }
 
@@ -146,9 +149,11 @@ model BomMaterial {
 
   // Relations
   model      Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
-  material   Material @relation(fields: [materialId], references: [id])
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
 
   @@unique([modelId, materialId])
+  @@index([modelId])
+  @@index([materialId])
   @@map("bom_materials")
 }
 
@@ -170,6 +175,7 @@ model PackagingConfig {
   quotations        Quotation[]
   standardCosts     StandardCost[]
 
+  @@index([modelId])
   @@map("packaging_configs")
 }
 
@@ -187,6 +193,7 @@ model ProcessConfig {
   // Relations
   packagingConfig    PackagingConfig @relation(fields: [packagingConfigId], references: [id], onDelete: Cascade)
 
+  @@index([packagingConfigId])
   @@map("process_configs")
 }
 
@@ -211,6 +218,7 @@ model PackagingMaterial {
   // Relations
   packagingConfig    PackagingConfig @relation(fields: [packagingConfigId], references: [id], onDelete: Cascade)
 
+  @@index([packagingConfigId])
   @@map("packaging_materials")
 }
 
@@ -251,6 +259,14 @@ model Quotation {
   creator             User     @relation("CreatedQuotations", fields: [createdBy], references: [id])
   reviewer            User?    @relation("ReviewedQuotations", fields: [reviewedBy], references: [id])
 
+  @@index([customerId])
+  @@index([regulationId])
+  @@index([modelId])
+  @@index([packagingConfigId])
+  @@index([createdBy])
+  @@index([reviewedBy])
+  @@index([status, createdAt])
+  @@index([createdAt])
   @@map("quotations")
 }
 
@@ -297,6 +313,8 @@ model StandardCost {
   setByUser           User     @relation("SetStandardCosts", fields: [setBy], references: [id])
 
   @@unique([packagingConfigId, saleType, isCurrent])
+  @@index([packagingConfigId])
+  @@index([setBy])
   @@map("standard_costs")
 }
 
@@ -318,6 +336,8 @@ model Notification {
   material            Material @relation(fields: [materialId], references: [id])
   processor           User?    @relation("ProcessedNotifications", fields: [processedBy], references: [id])
 
+  @@index([materialId])
+  @@index([processedBy])
   @@map("notifications")
 }
 
@@ -330,6 +350,17 @@ enum NotificationStatus {
   pending
   processed
   archived
+}
+
+// ==================== 序列号 ====================
+model SequenceNumber {
+  id        String   @id @default(uuid())
+  prefix    String   @unique
+  seq       Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([prefix])
+  @@map("sequence_numbers")
 }
 
 // ==================== 系统配置 ====================
