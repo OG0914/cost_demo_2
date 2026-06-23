@@ -20,7 +20,10 @@ export function useQuotations(filters: QuotationFilters = {}) {
     queryKey: ['quotations', filters],
     queryFn: async () => {
       const response = await quotationApi.getList(filters)
-      return response.data
+      return {
+        data: response.data ?? [],
+        meta: response.meta,
+      }
     },
   })
 
@@ -101,8 +104,8 @@ export function useQuotations(filters: QuotationFilters = {}) {
   })
 
   return {
-    quotations: data ?? [],
-    meta: undefined,
+    quotations: data?.data ?? [],
+    meta: data?.meta,
     isLoading,
     error,
     create: createMutation.mutate,

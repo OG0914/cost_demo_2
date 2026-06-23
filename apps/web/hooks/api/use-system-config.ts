@@ -9,7 +9,7 @@ export function useSystemConfigs() {
     queryKey: ['system-configs'],
     queryFn: async () => {
       const response = await systemConfigApi.getList()
-      return response.data?.data ?? []
+      return response.data ?? []
     },
   })
 }
@@ -19,7 +19,7 @@ export function useSystemConfig(key: string) {
     queryKey: ['system-configs', key],
     queryFn: async () => {
       const response = await systemConfigApi.getByKey(key)
-      return response.data?.data ?? null
+      return response.data ?? null
     },
     enabled: !!key,
   })
@@ -28,10 +28,10 @@ export function useSystemConfig(key: string) {
 export function useUpdateSystemConfig() {
   const queryClient = useQueryClient()
 
-  return useMutation<SystemConfig | undefined, Error, { key: string; value: Record<string, unknown> }>({
+  return useMutation<SystemConfig | undefined, Error, { key: string; value: unknown }>({
     mutationFn: async ({ key, value }) => {
       const response = await systemConfigApi.update(key, value)
-      return response.data?.data
+      return response.data
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['system-configs'] })

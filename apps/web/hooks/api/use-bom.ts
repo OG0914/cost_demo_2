@@ -5,17 +5,8 @@ import { bomApi, modelApi, materialApi } from '@/lib/api'
 import { toast } from 'sonner'
 import type { CreateBomMaterialRequest, UpdateBomMaterialRequest } from '@cost/shared-types'
 
-export function useBom(modelId: string) {
+export function useBom(selectedModelId: string) {
   const queryClient = useQueryClient()
-
-  const { data: bomData, isLoading: isLoadingBom, error: bomError } = useQuery({
-    queryKey: ['bom', modelId],
-    queryFn: async () => {
-      const response = await bomApi.getByModel(modelId)
-      return response.data
-    },
-    enabled: !!modelId,
-  })
 
   const { data: materialsData, isLoading: isLoadingMaterials } = useQuery({
     queryKey: ['materials'],
@@ -33,11 +24,22 @@ export function useBom(modelId: string) {
     },
   })
 
+  const effectiveModelId = selectedModelId || (modelsData?.[0]?.id ?? '')
+
+  const { data: bomData, isLoading: isLoadingBom, error: bomError } = useQuery({
+    queryKey: ['bom', effectiveModelId],
+    queryFn: async () => {
+      const response = await bomApi.getByModel(effectiveModelId)
+      return response.data
+    },
+    enabled: !!effectiveModelId,
+  })
+
   const createMutation = useMutation({
     mutationFn: bomApi.create,
     onSuccess: () => {
       toast.success('原料已添加到BOM')
-      queryClient.invalidateQueries({ queryKey: ['bom', modelId] })
+      queryClient.invalidateQueries({ queryKey: ['bom'] })
     },
     onError: (error: Error) => {
       toast.error(error.message || '添加失败')
@@ -49,7 +51,7 @@ export function useBom(modelId: string) {
       bomApi.update(id, data),
     onSuccess: () => {
       toast.success('BOM已更新')
-      queryClient.invalidateQueries({ queryKey: ['bom', modelId] })
+      queryClient.invalidateQueries({ queryKey: ['bom'] })
     },
     onError: (error: Error) => {
       toast.error(error.message || '更新失败')
@@ -57,10 +59,10 @@ export function useBom(modelId: string) {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: bomApi.delete,
-    onSuccess: () => {
-      toast.success('原料已从BOM移除')
-      queryClient.invalidateQueries({ queryKey: ['bom', modelId] })
+    mutationFn: ({ id }: { id: string; materialName: string }) => bomApi.delete(id),
+    onSuccess: (_, variables) => {
+      toast.success(`原料 "${variables.materialName}" 已从BOM移除`)
+      queryClient.invalidateQueries({ queryKey: ['bom'] })
     },
     onError: (error: Error) => {
       toast.error(error.message || '删除失败')

@@ -11,7 +11,6 @@ import type {
   Material,
   Model,
   Quotation,
-  ListResponse,
   CreateUserRequest,
   UpdateUserRequest,
   CreateRegulationRequest,
@@ -179,16 +178,10 @@ export const authApi = {
 // 用户 API
 export const userApi = createCrudApi<User, CreateUserRequest, UpdateUserRequest>('/users')
 
-// 法规 API - 注意：getList 返回的是 Regulation[] 而非 ListResponse<Regulation>
-export const regulationApi = createCrudApi<
-  Regulation,
-  CreateRegulationRequest,
-  CreateRegulationRequest,
-  Regulation[]
->('/regulations', {
-  getList: (): Promise<ApiResponse<Regulation[]>> =>
-    apiClient.get('/regulations'),
-})
+// 法规 API
+export const regulationApi = createCrudApi<Regulation, CreateRegulationRequest, CreateRegulationRequest>(
+  '/regulations'
+)
 
 // 客户 API
 export const customerApi = createCrudApi<Customer, CreateCustomerRequest, UpdateCustomerRequest>('/customers')
@@ -289,7 +282,7 @@ export const systemConfigApi = {
     apiClient.get('/system-configs'),
   getByKey: (key: string): Promise<ApiResponse<SystemConfig>> =>
     apiClient.get(`/system-configs/${key}`),
-  update: (key: string, value: Record<string, unknown>): Promise<ApiResponse<SystemConfig>> =>
+  update: (key: string, value: unknown): Promise<ApiResponse<SystemConfig>> =>
     apiClient.put(`/system-configs/${key}`, { value }),
 }
 
@@ -300,8 +293,8 @@ export const dashboardApi = {
 }
 
 // CRUD API 工厂函数 - 简化重复的 API 定义模式
-// 支持自定义列表返回类型（如 Regulation[] 或 ListResponse<T>）
-interface CrudApiOptions<T, CreateReq, UpdateReq, ListType = ListResponse<T>> {
+// 默认列表返回类型为 T[]，与后端 { success: true, data: T[], meta: {...} } 一致
+interface CrudApiOptions<T, CreateReq, UpdateReq, ListType = T[]> {
   getList?: (params?: object) => Promise<ApiResponse<ListType>>
   getById?: (id: string) => Promise<ApiResponse<T>>
   create?: (data: CreateReq) => Promise<ApiResponse<T>>
@@ -309,7 +302,7 @@ interface CrudApiOptions<T, CreateReq, UpdateReq, ListType = ListResponse<T>> {
   delete?: (id: string) => Promise<ApiResponse<void>>
 }
 
-function createCrudApi<T, CreateReq = unknown, UpdateReq = unknown, ListType = ListResponse<T>>(
+function createCrudApi<T, CreateReq = unknown, UpdateReq = unknown, ListType = T[]>(
   basePath: string,
   options?: CrudApiOptions<T, CreateReq, UpdateReq, ListType>
 ) {

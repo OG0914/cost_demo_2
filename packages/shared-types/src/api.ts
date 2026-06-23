@@ -56,6 +56,7 @@ export interface UpdateUserRequest {
   email?: string
   role?: string
   status?: string
+  password?: string
 }
 
 // ==================== 基础数据模块 ====================
