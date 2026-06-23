@@ -7,9 +7,16 @@ import {
   updateMaterialRequestSchema,
   errorResponseSchema,
   paginatedMetaSchema,
-  uuidParamSchema,
   paginationQuerySchema,
 } from '../lib/swagger-schemas.js'
+
+const materialParamSchema = {
+  type: 'object',
+  required: ['id'],
+  properties: {
+    id: { type: 'string', minLength: 1, description: '物料ID' },
+  },
+} as const
 
 export const materialRoutes = async (app: FastifyInstance) => {
   // GET /api/v1/materials
@@ -50,7 +57,7 @@ export const materialRoutes = async (app: FastifyInstance) => {
       summary: '获取物料详情',
       description: '根据 ID 获取物料详细信息',
       security: [{ bearerAuth: [] }],
-      params: uuidParamSchema,
+      params: materialParamSchema,
       response: {
         200: {
           description: '成功获取物料详情',
@@ -110,7 +117,7 @@ export const materialRoutes = async (app: FastifyInstance) => {
       summary: '更新物料',
       description: '更新物料信息',
       security: [{ bearerAuth: [] }],
-      params: uuidParamSchema,
+      params: materialParamSchema,
       body: updateMaterialRequestSchema,
       response: {
         200: {
@@ -145,7 +152,7 @@ export const materialRoutes = async (app: FastifyInstance) => {
       summary: '删除物料',
       description: '删除指定物料',
       security: [{ bearerAuth: [] }],
-      params: uuidParamSchema,
+      params: materialParamSchema,
       response: {
         200: {
           description: '物料删除成功',

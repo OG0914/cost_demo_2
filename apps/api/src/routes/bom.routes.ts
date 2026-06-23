@@ -3,14 +3,21 @@ import { prisma } from '@cost/database'
 import {
   bomMaterialSchema,
   errorResponseSchema,
-  uuidParamSchema,
 } from '../lib/swagger-schemas.js'
+
+const bomParamSchema = {
+  type: 'object',
+  required: ['id'],
+  properties: {
+    id: { type: 'string', minLength: 1, description: 'BOM物料ID' },
+  },
+} as const
 
 const bomQuerySchema = {
   type: 'object',
   required: ['modelId'],
   properties: {
-    modelId: { type: 'string', format: 'uuid', description: '型号ID' },
+    modelId: { type: 'string', minLength: 1, description: '型号ID' },
   },
 } as const
 
@@ -18,8 +25,8 @@ const createBomRequestSchema = {
   type: 'object',
   required: ['modelId', 'materialId', 'quantity'],
   properties: {
-    modelId: { type: 'string', format: 'uuid', description: '型号ID' },
-    materialId: { type: 'string', format: 'uuid', description: '物料ID' },
+    modelId: { type: 'string', minLength: 1, description: '型号ID' },
+    materialId: { type: 'string', minLength: 1, description: '物料ID' },
     quantity: { type: 'number', minimum: 0, description: '数量' },
     sortOrder: { type: 'integer', description: '排序' },
   },
@@ -173,7 +180,7 @@ export const bomRoutes = async (app: FastifyInstance) => {
       summary: '更新 BOM 物料',
       description: '更新 BOM 物料信息',
       security: [{ bearerAuth: [] }],
-      params: uuidParamSchema,
+      params: bomParamSchema,
       body: updateBomRequestSchema,
       response: {
         200: {
@@ -224,7 +231,7 @@ export const bomRoutes = async (app: FastifyInstance) => {
       summary: '删除 BOM 物料',
       description: '删除指定 BOM 物料',
       security: [{ bearerAuth: [] }],
-      params: uuidParamSchema,
+      params: bomParamSchema,
       response: {
         200: {
           description: 'BOM 物料删除成功',

@@ -7,8 +7,15 @@ import {
   createRegulationRequestSchema,
   updateRegulationRequestSchema,
   errorResponseSchema,
-  uuidParamSchema,
 } from '../lib/swagger-schemas.js'
+
+const regulationParamSchema = {
+  type: 'object',
+  required: ['id'],
+  properties: {
+    id: { type: 'string', minLength: 1, description: '法规ID' },
+  },
+} as const
 
 export const regulationRoutes = async (app: FastifyInstance) => {
   // GET /api/v1/regulations
@@ -53,7 +60,7 @@ export const regulationRoutes = async (app: FastifyInstance) => {
       summary: '获取法规详情',
       description: '根据 ID 获取法规详细信息',
       security: [{ bearerAuth: [] }],
-      params: uuidParamSchema,
+      params: regulationParamSchema,
       response: {
         200: {
           description: '成功获取法规详情',
@@ -143,7 +150,7 @@ export const regulationRoutes = async (app: FastifyInstance) => {
       summary: '更新法规',
       description: '更新法规信息',
       security: [{ bearerAuth: [] }],
-      params: uuidParamSchema,
+      params: regulationParamSchema,
       body: updateRegulationRequestSchema,
       response: {
         200: {
@@ -195,7 +202,7 @@ export const regulationRoutes = async (app: FastifyInstance) => {
       summary: '删除法规',
       description: '删除指定法规',
       security: [{ bearerAuth: [] }],
-      params: uuidParamSchema,
+      params: regulationParamSchema,
       response: {
         200: {
           description: '法规删除成功',

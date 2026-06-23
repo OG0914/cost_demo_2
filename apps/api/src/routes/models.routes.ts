@@ -7,7 +7,6 @@ import {
   bomMaterialSchema,
   errorResponseSchema,
   paginatedMetaSchema,
-  uuidParamSchema,
 } from '../lib/swagger-schemas.js'
 
 const modelQuerySchema = {
@@ -40,6 +39,14 @@ const updateModelRequestSchema = {
     category: { type: 'string', description: '分类' },
     series: { type: 'string', description: '系列' },
     imageUrl: { type: 'string', description: '图片URL' },
+  },
+} as const
+
+const modelParamSchema = {
+  type: 'object',
+  required: ['id'],
+  properties: {
+    id: { type: 'string', minLength: 1, description: '型号ID' },
   },
 } as const
 
@@ -132,7 +139,7 @@ export const modelRoutes = async (app: FastifyInstance) => {
       summary: '获取型号详情',
       description: '根据 ID 获取型号详细信息',
       security: [{ bearerAuth: [] }],
-      params: uuidParamSchema,
+      params: modelParamSchema,
       response: {
         200: {
           description: '成功获取型号详情',
@@ -173,7 +180,7 @@ export const modelRoutes = async (app: FastifyInstance) => {
       summary: '获取型号的包装配置',
       description: '获取指定型号的所有包装配置',
       security: [{ bearerAuth: [] }],
-      params: uuidParamSchema,
+      params: modelParamSchema,
       response: {
         200: {
           description: '成功获取包装配置列表',
@@ -220,7 +227,7 @@ export const modelRoutes = async (app: FastifyInstance) => {
       summary: '获取型号的 BOM',
       description: '获取指定型号的所有 BOM 物料',
       security: [{ bearerAuth: [] }],
-      params: uuidParamSchema,
+      params: modelParamSchema,
       response: {
         200: {
           description: '成功获取 BOM 物料列表',
@@ -325,7 +332,7 @@ export const modelRoutes = async (app: FastifyInstance) => {
       summary: '更新型号',
       description: '更新型号信息',
       security: [{ bearerAuth: [] }],
-      params: uuidParamSchema,
+      params: modelParamSchema,
       body: updateModelRequestSchema,
       response: {
         200: {
@@ -390,7 +397,7 @@ export const modelRoutes = async (app: FastifyInstance) => {
       summary: '删除型号',
       description: '删除指定型号',
       security: [{ bearerAuth: [] }],
-      params: uuidParamSchema,
+      params: modelParamSchema,
       response: {
         200: {
           description: '型号删除成功',

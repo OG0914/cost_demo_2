@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
   Users,
   Shield,
@@ -69,19 +69,50 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog'
 import { toast } from 'sonner'
-import { systemConfig } from '@/lib/data'
-import { useUsers } from '@/hooks/api'
+import { useUsers, useSystemConfigs, useUpdateSystemConfig } from '@/hooks/api'
 import type { User } from '@cost/shared-types'
 import type { Role } from '@/lib/types'
 
+// 配置项默认值
+const DEFAULT_CONFIG = {
+  adminFeeRate: 0.1,
+  vatRate: 0.13,
+  exchangeRate: 7.2,
+  fcl20Rate: 3500,
+  fcl40Rate: 5800,
+  lclBaseRate: 45,
+}
+
+// 从 SystemConfig[] 解析为页面需要的结构
+function parseConfig(configs: { key: string; value: unknown }[]) {
+  const getValue = (key: string) => {
+    const found = configs.find((c) => c.key === key)
+    if (!found) return DEFAULT_CONFIG[key as keyof typeof DEFAULT_CONFIG]
+    const v = found.value
+    if (typeof v === 'number') return v
+    if (typeof v === 'string') return parseFloat(v)
+    return DEFAULT_CONFIG[key as keyof typeof DEFAULT_CONFIG]
+  }
+
+  return {
+    adminFeeRate: getValue('adminFeeRate'),
+    vatRate: getValue('vatRate'),
+    exchangeRate: getValue('exchangeRate'),
+    fcl20Rate: getValue('fcl20Rate'),
+    fcl40Rate: getValue('fcl40Rate'),
+    lclBaseRate: getValue('lclBaseRate'),
+  }
+}
+
 const roles = [
-  { code: 'admin', name: '管理员', description: '系统最高权限', isSystem: true, userCount: 1 },
-  { code: 'purchaser', name: '采购', description: '原料采购管理', isSystem: true, userCount: 1 },
-  { code: 'producer', name: '生产', description: '生产管理', isSystem: true, userCount: 1 },
-  { code: 'reviewer', name: '审核', description: '审核成本分析', isSystem: true, userCount: 1 },
-  { code: 'salesperson', name: '业务员', description: '业务报价', isSystem: true, userCount: 1 },
-  { code: 'readonly', name: '只读', description: '仅查看权限', isSystem: true, userCount: 0 },
+  { code: 'admin', name: '管理员', description: '系统最高权限', isSystem: true },
+  { code: 'purchaser', name: '采购', description: '原料采购管理', isSystem: true },
+  { code: 'producer', name: '生产', description: '生产管理', isSystem: true },
+  { code: 'reviewer', name: '审核', description: '审核成本分析', isSystem: true },
+  { code: 'salesperson', name: '业务员', description: '业务报价', isSystem: true },
+  { code: 'readonly', name: '只读', description: '仅查看权限', isSystem: true },
 ]
 
 const roleLabels: Record<string, string> = {
@@ -94,7 +125,20 @@ const roleLabels: Record<string, string> = {
 }
 
 export default function SystemPage() {
-  const { users, isLoading } = useUsers()
+  const { users, isLoading, create: createUser, update: updateUser, delete: deleteUser } = useUsers()
+  const { data: systemConfigs, isLoading: configLoading, error: configError } = useSystemConfigs()
+  const updateConfig = useUpdateSystemConfig()
+
+  const config = systemConfigs ? parseConfig(systemConfigs) : DEFAULT_CONFIG
+
+  const rolesWithCount = useMemo(() => {
+    const countByRole = (users || []).reduce<Record<string, number>>((acc, user) => {
+      acc[user.role] = (acc[user.role] || 0) + 1
+      return acc
+    }, {})
+    return roles.map((role) => ({ ...role, userCount: countByRole[role.code] || 0 }))
+  }, [users])
+
   const [searchTerm, setSearchTerm] = useState('')
   const [userDialogOpen, setUserDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -109,12 +153,12 @@ export default function SystemPage() {
     password: '',
   })
   const [configFormData, setConfigFormData] = useState({
-    adminFeeRate: (systemConfig.adminFeeRate * 100).toString(),
-    vatRate: (systemConfig.vatRate * 100).toString(),
-    exchangeRate: systemConfig.exchangeRate.toString(),
-    fcl20Rate: systemConfig.fcl20Rate.toString(),
-    fcl40Rate: systemConfig.fcl40Rate.toString(),
-    lclBaseRate: systemConfig.lclBaseRate.toString(),
+    adminFeeRate: (config.adminFeeRate * 100).toString(),
+    vatRate: (config.vatRate * 100).toString(),
+    exchangeRate: config.exchangeRate.toString(),
+    fcl20Rate: config.fcl20Rate.toString(),
+    fcl40Rate: config.fcl40Rate.toString(),
+    lclBaseRate: config.lclBaseRate.toString(),
   })
 
   const filteredUsers = (users || []).filter(
@@ -136,13 +180,13 @@ export default function SystemPage() {
       username: user.username,
       name: user.name,
       email: user.email,
-      role: user.role,
+      role: user.role as Role,
       password: '',
     })
     setUserDialogOpen(true)
   }
 
-  const handleSaveUser = () => {
+  const handleSaveUser = async () => {
     if (!userFormData.username || !userFormData.name || !userFormData.role) {
       toast.error('请填写完整信息')
       return
@@ -151,29 +195,107 @@ export default function SystemPage() {
       toast.error('请设置密码')
       return
     }
-    toast.success(editingUser ? '用户已更新' : '用户已添加')
-    setUserDialogOpen(false)
+    // email 后端为必填且必须是合法邮箱格式，前端先校验避免 400
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!userFormData.email || !emailRegex.test(userFormData.email)) {
+      toast.error('请输入有效的邮箱地址')
+      return
+    }
+    // 密码长度后端要求 >=6 位
+    if (!editingUser && userFormData.password.length < 6) {
+      toast.error('密码至少 6 位')
+      return
+    }
+
+    try {
+      if (editingUser) {
+        await updateUser({
+          id: editingUser.id,
+          data: {
+            name: userFormData.name,
+            email: userFormData.email,
+            role: userFormData.role,
+          },
+        })
+      } else {
+        await createUser({
+          username: userFormData.username,
+          name: userFormData.name,
+          email: userFormData.email,
+          role: userFormData.role,
+          password: userFormData.password,
+          status: 'active',
+        })
+      }
+      setUserDialogOpen(false)
+    } catch {
+      // 错误已由 hook 统一 toast
+    }
   }
 
-  const handleDeleteUser = () => {
-    toast.success('用户已删除')
-    setDeleteDialogOpen(false)
-    setEditingUser(null)
+  const handleDeleteUser = async () => {
+    if (!editingUser) return
+    try {
+      await deleteUser({ id: editingUser.id, name: editingUser.name })
+      setDeleteDialogOpen(false)
+      setEditingUser(null)
+    } catch {
+      // 错误已由 hook 统一 toast
+    }
   }
 
-  const handleResetPassword = () => {
-    toast.success('密码重置邮件已发送')
-    setResetPasswordDialogOpen(false)
-    setEditingUser(null)
+  const handleResetPassword = async () => {
+    if (!editingUser || !userFormData.password) {
+      toast.error('请设置新密码')
+      return
+    }
+    try {
+      await updateUser({
+        id: editingUser.id,
+        data: { password: userFormData.password },
+      })
+      toast.success('密码已重置')
+      setResetPasswordDialogOpen(false)
+      setEditingUser(null)
+      setUserFormData((prev) => ({ ...prev, password: '' }))
+    } catch {
+      // 错误已由 hook 统一 toast
+    }
   }
 
-  const handleToggleUserStatus = (user: User) => {
-    toast.success(user.status === 'active' ? '用户已禁用' : '用户已启用')
+  const handleToggleUserStatus = async (user: User) => {
+    try {
+      await updateUser({
+        id: user.id,
+        data: { status: user.status === 'active' ? 'inactive' : 'active' },
+      })
+    } catch {
+      // 错误已由 hook 统一 toast
+    }
   }
 
   const handleSaveConfig = () => {
-    toast.success('系统配置已保存')
-    setConfigDialogOpen(false)
+    const updates = [
+      { key: 'adminFeeRate', value: parseFloat(configFormData.adminFeeRate) / 100 },
+      { key: 'vatRate', value: parseFloat(configFormData.vatRate) / 100 },
+      { key: 'exchangeRate', value: parseFloat(configFormData.exchangeRate) },
+      { key: 'fcl20Rate', value: parseFloat(configFormData.fcl20Rate) },
+      { key: 'fcl40Rate', value: parseFloat(configFormData.fcl40Rate) },
+      { key: 'lclBaseRate', value: parseFloat(configFormData.lclBaseRate) },
+    ]
+
+    Promise.all(
+      updates.map(({ key, value }) =>
+        updateConfig.mutateAsync({ key, value })
+      )
+    )
+      .then(() => {
+        toast.success('系统配置已保存')
+        setConfigDialogOpen(false)
+      })
+      .catch((err: Error) => {
+        toast.error(err.message || '保存失败，请稍后重试')
+      })
   }
 
   return (
@@ -361,7 +483,7 @@ export default function SystemPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {roles.map((role) => (
+                    {rolesWithCount.map((role) => (
                       <TableRow key={role.code}>
                         <TableCell className="font-mono text-sm">{role.code}</TableCell>
                         <TableCell className="font-medium">{role.name}</TableCell>
@@ -381,76 +503,122 @@ export default function SystemPage() {
 
         {/* 系统配置 */}
         <TabsContent value="config">
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* 费率配置 */}
-            <Card>
-              <CardHeader>
-                <CardTitle>费率配置</CardTitle>
-                <CardDescription>管销费率和税率设置</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between rounded-lg border p-4">
-                  <div>
-                    <p className="font-medium">管销费率</p>
-                    <p className="text-sm text-muted-foreground">计算管销费用的百分比</p>
-                  </div>
-                  <span className="text-xl font-bold">{systemConfig.adminFeeRate * 100}%</span>
-                </div>
-                <div className="flex items-center justify-between rounded-lg border p-4">
-                  <div>
-                    <p className="font-medium">增值税率</p>
-                    <p className="text-sm text-muted-foreground">内销时的增值税百分比</p>
-                  </div>
-                  <span className="text-xl font-bold">{systemConfig.vatRate * 100}%</span>
-                </div>
-                <div className="flex items-center justify-between rounded-lg border p-4">
-                  <div>
-                    <p className="font-medium">汇率</p>
-                    <p className="text-sm text-muted-foreground">CNY/USD汇率</p>
-                  </div>
-                  <span className="text-xl font-bold">{systemConfig.exchangeRate}</span>
-                </div>
-              </CardContent>
-            </Card>
+          {configLoading ? (
+            <div className="grid gap-6 lg:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-6 w-32" />
+                  <Skeleton className="h-4 w-48" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-6 w-32" />
+                  <Skeleton className="h-4 w-48" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </CardContent>
+              </Card>
+            </div>
+          ) : configError ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
+              <p className="text-red-600">加载配置失败，请刷新页面重试</p>
+              <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>
+                刷新页面
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div className="grid gap-6 lg:grid-cols-2">
+                {/* 费率配置 */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>费率配置</CardTitle>
+                    <CardDescription>管销费率和税率设置</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between rounded-lg border p-4">
+                      <div>
+                        <p className="font-medium">管销费率</p>
+                        <p className="text-sm text-muted-foreground">计算管销费用的百分比</p>
+                      </div>
+                      <span className="text-xl font-bold">{config.adminFeeRate * 100}%</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border p-4">
+                      <div>
+                        <p className="font-medium">增值税率</p>
+                        <p className="text-sm text-muted-foreground">内销时的增值税百分比</p>
+                      </div>
+                      <span className="text-xl font-bold">{config.vatRate * 100}%</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border p-4">
+                      <div>
+                        <p className="font-medium">汇率</p>
+                        <p className="text-sm text-muted-foreground">CNY/USD汇率</p>
+                      </div>
+                      <span className="text-xl font-bold">{config.exchangeRate}</span>
+                    </div>
+                  </CardContent>
+                </Card>
 
-            {/* 运费配置 */}
-            <Card>
-              <CardHeader>
-                <CardTitle>运费配置</CardTitle>
-                <CardDescription>各类运输方式的基础运费</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between rounded-lg border p-4">
-                  <div>
-                    <p className="font-medium">整柜20尺 (FCL 20)</p>
-                    <p className="text-sm text-muted-foreground">20尺集装箱运费</p>
-                  </div>
-                  <span className="text-xl font-bold">¥{systemConfig.fcl20Rate.toLocaleString()}</span>
-                </div>
-                <div className="flex items-center justify-between rounded-lg border p-4">
-                  <div>
-                    <p className="font-medium">整柜40尺 (FCL 40)</p>
-                    <p className="text-sm text-muted-foreground">40尺集装箱运费</p>
-                  </div>
-                  <span className="text-xl font-bold">¥{systemConfig.fcl40Rate.toLocaleString()}</span>
-                </div>
-                <div className="flex items-center justify-between rounded-lg border p-4">
-                  <div>
-                    <p className="font-medium">拼箱 (LCL)</p>
-                    <p className="text-sm text-muted-foreground">每立方米运费</p>
-                  </div>
-                  <span className="text-xl font-bold">¥{systemConfig.lclBaseRate}/CBM</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                {/* 运费配置 */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>运费配置</CardTitle>
+                    <CardDescription>各类运输方式的基础运费</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between rounded-lg border p-4">
+                      <div>
+                        <p className="font-medium">整柜20尺 (FCL 20)</p>
+                        <p className="text-sm text-muted-foreground">20尺集装箱运费</p>
+                      </div>
+                      <span className="text-xl font-bold">¥{config.fcl20Rate.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border p-4">
+                      <div>
+                        <p className="font-medium">整柜40尺 (FCL 40)</p>
+                        <p className="text-sm text-muted-foreground">40尺集装箱运费</p>
+                      </div>
+                      <span className="text-xl font-bold">¥{config.fcl40Rate.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border p-4">
+                      <div>
+                        <p className="font-medium">拼箱 (LCL)</p>
+                        <p className="text-sm text-muted-foreground">每立方米运费</p>
+                      </div>
+                      <span className="text-xl font-bold">¥{config.lclBaseRate}/CBM</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
 
-          <div className="mt-6">
-            <Button onClick={() => setConfigDialogOpen(true)}>
-              <Settings className="mr-2 size-4" />
-              修改配置
-            </Button>
-          </div>
+              <div className="mt-6">
+                <Button onClick={() => {
+                  setConfigFormData({
+                    adminFeeRate: (config.adminFeeRate * 100).toString(),
+                    vatRate: (config.vatRate * 100).toString(),
+                    exchangeRate: config.exchangeRate.toString(),
+                    fcl20Rate: config.fcl20Rate.toString(),
+                    fcl40Rate: config.fcl40Rate.toString(),
+                    lclBaseRate: config.lclBaseRate.toString(),
+                  })
+                  setConfigDialogOpen(true)
+                }}>
+                  <Settings className="mr-2 size-4" />
+                  修改配置
+                </Button>
+              </div>
+            </>
+          )}
         </TabsContent>
       </Tabs>
 
@@ -607,22 +775,12 @@ export default function SystemPage() {
       </Dialog>
 
       {/* 删除用户确认弹窗 */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认删除</AlertDialogTitle>
-            <AlertDialogDescription>
-              确定要删除用户 "{editingUser?.name}" 吗？此操作不可撤销。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteUser} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              删除
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDeleteDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        description={`确定要删除用户 "${editingUser?.name}" 吗？此操作不可撤销。`}
+        onConfirm={handleDeleteUser}
+      />
 
       {/* 重置密码确认弹窗 */}
       <AlertDialog open={resetPasswordDialogOpen} onOpenChange={setResetPasswordDialogOpen}>

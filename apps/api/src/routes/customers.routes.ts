@@ -6,9 +6,16 @@ import {
   updateCustomerRequestSchema,
   errorResponseSchema,
   paginatedMetaSchema,
-  uuidParamSchema,
   paginationQuerySchema,
 } from '../lib/swagger-schemas.js'
+
+const customerParamSchema = {
+  type: 'object',
+  required: ['id'],
+  properties: {
+    id: { type: 'string', minLength: 1, description: '客户ID' },
+  },
+} as const
 
 export const customerRoutes = async (app: FastifyInstance): Promise<void> => {
   // GET /api/v1/customers
@@ -49,7 +56,7 @@ export const customerRoutes = async (app: FastifyInstance): Promise<void> => {
       summary: '获取客户详情',
       description: '根据 ID 获取客户详细信息',
       security: [{ bearerAuth: [] }],
-      params: uuidParamSchema,
+      params: customerParamSchema,
       response: {
         200: {
           description: '成功获取客户详情',
@@ -109,7 +116,7 @@ export const customerRoutes = async (app: FastifyInstance): Promise<void> => {
       summary: '更新客户',
       description: '更新客户信息',
       security: [{ bearerAuth: [] }],
-      params: uuidParamSchema,
+      params: customerParamSchema,
       body: updateCustomerRequestSchema,
       response: {
         200: {
@@ -144,7 +151,7 @@ export const customerRoutes = async (app: FastifyInstance): Promise<void> => {
       summary: '删除客户',
       description: '删除指定客户',
       security: [{ bearerAuth: [] }],
-      params: uuidParamSchema,
+      params: customerParamSchema,
       response: {
         200: {
           description: '客户删除成功',

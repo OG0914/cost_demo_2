@@ -44,16 +44,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog'
 import { toast } from 'sonner'
 import { useModels } from '@/hooks/api/use-models'
 import { useRegulations } from '@/hooks/api/use-regulations'
@@ -64,7 +55,7 @@ const categories = ['半面罩', '口罩', '全面罩', '配件']
 const series = ['D系列', 'P系列', 'N系列', 'X系列']
 
 export default function ModelsPage() {
-  const { models, isLoading: isLoadingModels } = useModels()
+  const { models, isLoading: isLoadingModels, create, update, delete: deleteModel, isCreating, isUpdating, isDeleting } = useModels()
   const { regulations, isLoading: isLoadingRegulations } = useRegulations()
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
@@ -112,16 +103,28 @@ export default function ModelsPage() {
   }
 
   const handleSave = () => {
-    if (!formData.name.trim() || !formData.regulationId) {
+    if (!formData.name.trim() || !formData.regulationId || !formData.category.trim() || !formData.series.trim()) {
       toast.error('请填写完整信息')
       return
     }
-    toast.success(editingItem ? '型号已更新' : '型号已添加')
+    const payload = {
+      name: formData.name,
+      regulationId: formData.regulationId,
+      category: formData.category,
+      series: formData.series,
+    }
+    if (editingItem) {
+      update({ id: editingItem.id, data: payload })
+    } else {
+      create(payload)
+    }
     setDialogOpen(false)
   }
 
   const handleDelete = () => {
-    toast.success('型号已删除')
+    if (editingItem) {
+      deleteModel({ id: editingItem.id, name: editingItem.name })
+    }
     setDeleteDialogOpen(false)
   }
 
@@ -355,7 +358,7 @@ export default function ModelsPage() {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               取消
             </Button>
-            <Button onClick={handleSave}>
+            <Button onClick={handleSave} disabled={isCreating || isUpdating}>
               保存
             </Button>
           </DialogFooter>
@@ -425,22 +428,14 @@ export default function ModelsPage() {
       </Dialog>
 
       {/* 删除确认弹窗 */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认删除</AlertDialogTitle>
-            <AlertDialogDescription>
-              确定要删除型号 "{editingItem?.name}" 吗？此操作不可撤销。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              删除
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* 删除确认弹窗 */}
+      <ConfirmDeleteDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        description={`确定要删除型号 "${editingItem?.name}" 吗？此操作不可撤销。`}
+        onConfirm={handleDelete}
+        loading={isDeleting}
+      />
     </div>
   )
 }

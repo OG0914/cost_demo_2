@@ -36,16 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog'
 import { toast } from 'sonner'
 import { useBom } from '@/hooks/api'
 
@@ -54,7 +45,7 @@ export default function BomPage() {
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [copyDialogOpen, setCopyDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [deletingItemId, setDeletingItemId] = useState<string | null>(null)
+  const [deletingItem, setDeletingItem] = useState<{ id: string; materialName: string } | null>(null)
   const [newMaterial, setNewMaterial] = useState({ materialId: '', quantity: '' })
   const [copyTargetModelId, setCopyTargetModelId] = useState<string>('')
 
@@ -108,11 +99,11 @@ export default function BomPage() {
   }
 
   const handleDeleteItem = () => {
-    if (deletingItemId) {
-      deleteBom(deletingItemId)
+    if (deletingItem) {
+      deleteBom({ id: deletingItem.id, materialName: deletingItem.materialName })
     }
     setDeleteDialogOpen(false)
-    setDeletingItemId(null)
+    setDeletingItem(null)
   }
 
   if (isLoading) {
@@ -173,24 +164,20 @@ export default function BomPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {models.map((model: { id: string; name: string; series?: string }) => {
-                const bomCount = modelBom.length
-                return (
-                  <button
-                    key={model.id}
-                    onClick={() => setSelectedModelId(model.id)}
-                    className={`flex w-full items-center justify-between rounded-lg border p-3 text-left transition-colors hover:bg-muted/50 ${
-                      effectiveModelId === model.id ? 'border-foreground bg-muted/50' : ''
-                    }`}
-                  >
-                    <div>
-                      <p className="font-medium">{model.name}</p>
-                      <p className="text-xs text-muted-foreground">{model.series || '-'}</p>
-                    </div>
-                    <span className="text-xs text-muted-foreground">{bomCount}种</span>
-                  </button>
-                )
-              })}
+              {models.map((model: { id: string; name: string; series?: string }) => (
+                <button
+                  key={model.id}
+                  onClick={() => setSelectedModelId(model.id)}
+                  className={`flex w-full items-center justify-between rounded-lg border p-3 text-left transition-colors hover:bg-muted/50 ${
+                    effectiveModelId === model.id ? 'border-foreground bg-muted/50' : ''
+                  }`}
+                >
+                  <div>
+                    <p className="font-medium">{model.name}</p>
+                    <p className="text-xs text-muted-foreground">{model.series || '-'}</p>
+                  </div>
+                </button>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -268,7 +255,7 @@ export default function BomPage() {
                             size="icon"
                             className="size-8 text-destructive"
                             onClick={() => {
-                              setDeletingItemId(item.id)
+                              setDeletingItem({ id: item.id, materialName: item.material?.name || '未知原料' })
                               setDeleteDialogOpen(true)
                             }}
                           >
@@ -389,22 +376,14 @@ export default function BomPage() {
       </Dialog>
 
       {/* 删除确认弹窗 */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认移除</AlertDialogTitle>
-            <AlertDialogDescription>
-              确定要从BOM中移除这个原料吗？
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteItem} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              移除
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDeleteDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="确认移除"
+        description={`确定要从BOM中移除原料 "${deletingItem?.materialName}" 吗？`}
+        confirmText="移除"
+        onConfirm={handleDeleteItem}
+      />
     </div>
   )
 }

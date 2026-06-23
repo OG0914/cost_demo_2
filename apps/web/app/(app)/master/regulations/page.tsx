@@ -38,28 +38,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog'
 import { toast } from 'sonner'
 import { useRegulations } from '@/hooks/api/use-regulations'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Regulation } from '@cost/shared-types'
 
 export default function RegulationsPage() {
-  const { regulations, isLoading } = useRegulations()
+  const { regulations, isLoading, create, update, delete: deleteRegulation, isCreating, isUpdating, isDeleting } = useRegulations()
   const [searchTerm, setSearchTerm] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<Regulation | null>(null)
-  const [formData, setFormData] = useState({ name: '', description: '' })
+  const [formData, setFormData] = useState({ code: '', name: '', description: '' })
 
   const filteredRegulations = (regulations ?? []).filter((r: Regulation) =>
     r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -68,27 +59,39 @@ export default function RegulationsPage() {
 
   const handleAdd = () => {
     setEditingItem(null)
-    setFormData({ name: '', description: '' })
+    setFormData({ code: '', name: '', description: '' })
     setDialogOpen(true)
   }
 
   const handleEdit = (item: Regulation) => {
     setEditingItem(item)
-    setFormData({ name: item.name, description: item.description || '' })
+    setFormData({ code: item.code, name: item.name, description: item.description || '' })
     setDialogOpen(true)
   }
 
   const handleSave = () => {
-    if (!formData.name.trim()) {
-      toast.error('请填写法规名称')
+    if (!formData.code.trim() || !formData.name.trim()) {
+      toast.error('请填写法规代码和名称')
       return
     }
-    toast.success(editingItem ? '法规已更新' : '法规已添加')
+    const payload = {
+      code: formData.code,
+      name: formData.name,
+      description: formData.description,
+      status: editingItem ? editingItem.status : 'active',
+    }
+    if (editingItem) {
+      update({ id: editingItem.id, data: payload })
+    } else {
+      create(payload)
+    }
     setDialogOpen(false)
   }
 
   const handleDelete = () => {
-    toast.success('法规已删除')
+    if (editingItem) {
+      deleteRegulation({ id: editingItem.id, name: editingItem.name })
+    }
     setDeleteDialogOpen(false)
   }
 
@@ -225,6 +228,14 @@ export default function RegulationsPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
+              <Label>法规代码</Label>
+              <Input
+                placeholder="如：GB、EN、NIOSH"
+                value={formData.code}
+                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
               <Label>法规名称</Label>
               <Input
                 placeholder="如：GB、EN、NIOSH"
@@ -245,7 +256,7 @@ export default function RegulationsPage() {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               取消
             </Button>
-            <Button onClick={handleSave}>
+            <Button onClick={handleSave} disabled={isCreating || isUpdating}>
               保存
             </Button>
           </DialogFooter>
@@ -253,22 +264,13 @@ export default function RegulationsPage() {
       </Dialog>
 
       {/* 删除确认弹窗 */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认删除</AlertDialogTitle>
-            <AlertDialogDescription>
-              确定要删除法规 "{editingItem?.name}" 吗？此操作不可撤销。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              删除
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDeleteDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        description={`确定要删除法规 "${editingItem?.name}" 吗？此操作不可撤销。`}
+        onConfirm={handleDelete}
+        loading={isDeleting}
+      />
     </div>
   )
 }

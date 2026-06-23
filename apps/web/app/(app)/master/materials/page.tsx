@@ -44,16 +44,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog'
 import { toast } from 'sonner'
 import { useMaterials } from '@/hooks/api/use-materials'
 import { useListFilters } from '@/hooks/forms/use-filters'
@@ -65,7 +56,7 @@ const units = ['个', '码', 'KG', '套', '卷', '包']
 const currencies = ['CNY', 'USD']
 
 export default function MaterialsPage() {
-  const { materials, isLoading } = useMaterials()
+  const { materials, isLoading, create, update, delete: deleteMaterial, isCreating, isUpdating, isDeleting } = useMaterials()
   const { searchTerm, setSearchTerm, filters, setFilter, filteredItems: filteredMaterials } = useListFilters(
     materials ?? [],
     ['materialNo', 'name']
@@ -116,20 +107,26 @@ export default function MaterialsPage() {
   }
 
   const handleSave = () => {
-    if (!formData.materialNo.trim() || !formData.name.trim() || !formData.price) {
+    if (!formData.materialNo.trim() || !formData.name.trim() || !formData.price || !formData.unit.trim() || !formData.category.trim()) {
       toast.error('请填写完整信息')
       return
     }
-    if (editingItem && parseFloat(formData.price) !== editingItem.price) {
-      toast.success('原料已更新，价格变更通知已生成')
+    const payload = {
+      ...formData,
+      price: parseFloat(formData.price),
+    }
+    if (editingItem) {
+      update({ id: editingItem.id, data: payload })
     } else {
-      toast.success(editingItem ? '原料已更新' : '原料已添加')
+      create(payload)
     }
     setDialogOpen(false)
   }
 
   const handleDelete = () => {
-    toast.success('原料已删除')
+    if (editingItem) {
+      deleteMaterial({ id: editingItem.id, name: editingItem.name })
+    }
     setDeleteDialogOpen(false)
   }
 
@@ -387,7 +384,7 @@ export default function MaterialsPage() {
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
               取消
             </Button>
-            <Button onClick={handleSave}>
+            <Button onClick={handleSave} disabled={isCreating || isUpdating}>
               保存
             </Button>
           </DialogFooter>
@@ -427,22 +424,13 @@ export default function MaterialsPage() {
       </Dialog>
 
       {/* 删除确认弹窗 */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认删除</AlertDialogTitle>
-            <AlertDialogDescription>
-              确定要删除原料 "{editingItem?.name}" 吗？此操作不可撤销。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              删除
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDeleteDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        description={`确定要删除原料 "${editingItem?.name}" 吗？此操作不可撤销。`}
+        onConfirm={handleDelete}
+        loading={isDeleting}
+      />
     </div>
   )
 }
