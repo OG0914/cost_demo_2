@@ -29,6 +29,7 @@ const updateUserRequestSchema = {
     email: { type: 'string', format: 'email', description: '邮箱' },
     role: { type: 'string', enum: ['admin', 'purchaser', 'producer', 'reviewer', 'salesperson', 'readonly'], description: '角色' },
     status: { type: 'string', enum: ['active', 'inactive'], description: '状态' },
+    password: { type: 'string', minLength: 6, maxLength: 100, description: '新密码' },
   },
 } as const
 

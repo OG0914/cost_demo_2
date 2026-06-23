@@ -39,6 +39,7 @@ export const updateUserSchema = z.object({
   email: emailSchema.optional(),
   role: userRoleSchema.optional(),
   status: userStatusSchema.optional(),
+  password: z.string().min(6, '密码至少6位').max(100, '密码最多100字符').optional(),
 })
 
 export type CreateUserInput = z.infer<typeof createUserSchema>
@@ -177,7 +178,13 @@ export function validateSchema<T>(schema: z.ZodSchema<T>, data: unknown): { succ
 
 // ==================== SystemConfig Schemas ====================
 
-export const systemConfigValueSchema = z.record(z.any())
+export const systemConfigValueSchema = z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.record(z.any()),
+  z.array(z.any()),
+])
 
 export const updateSystemConfigSchema = z.object({
   value: systemConfigValueSchema,

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { UserService } from './user.service.js'
 import { userRepository } from '../repositories/user.repository.js'
+import { prisma } from '@cost/database'
 import bcrypt from 'bcryptjs'
 
 // Mock dependencies
@@ -19,6 +20,31 @@ vi.mock('bcryptjs', () => ({
     hash: vi.fn(),
   },
 }))
+
+vi.mock('@cost/database', async () => {
+  const actual = await vi.importActual('@cost/database') as typeof import('@cost/database')
+  return {
+    ...actual,
+    prisma: {
+      quotation: {
+        count: vi.fn(),
+        findFirst: vi.fn(),
+      },
+      customer: {
+        count: vi.fn(),
+        findFirst: vi.fn(),
+      },
+      standardCost: {
+        count: vi.fn(),
+        findFirst: vi.fn(),
+      },
+      notification: {
+        count: vi.fn(),
+        findFirst: vi.fn(),
+      },
+    },
+  }
+})
 
 describe('UserService', () => {
   let service: UserService
@@ -141,12 +167,40 @@ describe('UserService', () => {
   })
 
   describe('delete', () => {
-    it('should delete user by id', async () => {
+    it('should delete user by id when no associations', async () => {
       vi.mocked(userRepository.delete).mockResolvedValue(undefined)
+      vi.mocked(prisma.quotation.count).mockResolvedValue(0)
+      vi.mocked(prisma.customer.count).mockResolvedValue(0)
+      vi.mocked(prisma.standardCost.count).mockResolvedValue(0)
+      vi.mocked(prisma.notification.count).mockResolvedValue(0)
 
       await service.delete('1')
 
       expect(userRepository.delete).toHaveBeenCalledWith('1')
+    })
+
+    it('should throw conflict error when user has associations', async () => {
+      vi.mocked(userRepository.delete).mockResolvedValue(undefined)
+      vi.mocked(prisma.quotation.count).mockResolvedValueOnce(1).mockResolvedValueOnce(0)
+      vi.mocked(prisma.customer.count).mockResolvedValue(0)
+      vi.mocked(prisma.standardCost.count).mockResolvedValue(0)
+      vi.mocked(prisma.notification.count).mockResolvedValue(0)
+      vi.mocked(prisma.quotation.findFirst).mockResolvedValue({ quotationNo: 'QT-2026-0001' } as never)
+
+      await expect(service.delete('1')).rejects.toThrow('无法删除：该用户已关联业务数据（报价单 QT-2026-0001），请先处理相关数据')
+      expect(userRepository.delete).not.toHaveBeenCalled()
+    })
+
+    it('should show first record and total count when multiple associations exist', async () => {
+      vi.mocked(userRepository.delete).mockResolvedValue(undefined)
+      vi.mocked(prisma.quotation.count).mockResolvedValueOnce(2).mockResolvedValueOnce(0)
+      vi.mocked(prisma.customer.count).mockResolvedValue(1)
+      vi.mocked(prisma.standardCost.count).mockResolvedValue(0)
+      vi.mocked(prisma.notification.count).mockResolvedValue(0)
+      vi.mocked(prisma.quotation.findFirst).mockResolvedValue({ quotationNo: 'QT-2026-0001' } as never)
+
+      await expect(service.delete('1')).rejects.toThrow('无法删除：该用户已关联业务数据（报价单 QT-2026-0001 等 4 条），请先处理相关数据')
+      expect(userRepository.delete).not.toHaveBeenCalled()
     })
   })
 })
