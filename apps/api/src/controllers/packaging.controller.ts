@@ -1,6 +1,15 @@
 import type { FastifyRequest, FastifyReply } from 'fastify'
 import { packagingService } from '../services/packaging.service.js'
 import { sendSuccess, sendError, sendNotFound } from '../lib/response-helpers.js'
+import {
+  createPackagingConfigSchema,
+  updatePackagingConfigSchema,
+  createProcessConfigSchema,
+  updateProcessConfigSchema,
+  createPackagingMaterialSchema,
+  updatePackagingMaterialSchema,
+  formatZodError,
+} from '../lib/schemas.js'
 
 export class PackagingController {
   async getList(request: FastifyRequest, reply: FastifyReply) {
@@ -27,13 +36,11 @@ export class PackagingController {
   }
 
   async create(request: FastifyRequest, reply: FastifyReply) {
-    const body = request.body as {
-      modelId: string
-      name: string
-      packagingType: string
-      perBox: number
-      perCarton: number
+    const validation = createPackagingConfigSchema.safeParse(request.body)
+    if (!validation.success) {
+      return sendError(reply, 400, 'VALIDATION_ERROR', formatZodError(validation.error))
     }
+    const body = validation.data
 
     try {
       const config = await packagingService.create(body)
@@ -48,12 +55,11 @@ export class PackagingController {
 
   async update(request: FastifyRequest, reply: FastifyReply) {
     const { id } = request.params as { id: string }
-    const body = request.body as {
-      name?: string
-      packagingType?: string
-      perBox?: number
-      perCarton?: number
+    const validation = updatePackagingConfigSchema.safeParse(request.body)
+    if (!validation.success) {
+      return sendError(reply, 400, 'VALIDATION_ERROR', formatZodError(validation.error))
     }
+    const body = validation.data
 
     try {
       const config = await packagingService.update(id, body)
@@ -94,19 +100,18 @@ export class PackagingController {
 
   async createProcess(request: FastifyRequest, reply: FastifyReply) {
     const { id: packagingConfigId } = request.params as { id: string }
-    const body = request.body as {
-      name: string
-      price: number
-      unit: string
-      sortOrder?: number
+    const validation = createProcessConfigSchema.safeParse(request.body)
+    if (!validation.success) {
+      return sendError(reply, 400, 'VALIDATION_ERROR', formatZodError(validation.error))
     }
+    const body = validation.data
 
     try {
       const process = await packagingService.createProcess({
         packagingConfigId,
         name: body.name,
         price: body.price,
-        unit: body.unit as 'piece' | 'dozen',
+        unit: body.unit,
         sortOrder: body.sortOrder,
       })
       return sendSuccess(reply, process, undefined, 201)
@@ -122,18 +127,17 @@ export class PackagingController {
 
   async updateProcess(request: FastifyRequest, reply: FastifyReply) {
     const { processId } = request.params as { processId: string }
-    const body = request.body as {
-      name?: string
-      price?: number
-      unit?: string
-      sortOrder?: number
+    const validation = updateProcessConfigSchema.safeParse(request.body)
+    if (!validation.success) {
+      return sendError(reply, 400, 'VALIDATION_ERROR', formatZodError(validation.error))
     }
+    const body = validation.data
 
     try {
       const process = await packagingService.updateProcess(processId, {
         name: body.name,
         price: body.price,
-        unit: body.unit as 'piece' | 'dozen',
+        unit: body.unit,
         sortOrder: body.sortOrder,
       })
       return sendSuccess(reply, process)
@@ -173,14 +177,11 @@ export class PackagingController {
 
   async createMaterial(request: FastifyRequest, reply: FastifyReply) {
     const { id: packagingConfigId } = request.params as { id: string }
-    const body = request.body as {
-      name: string
-      quantity: number
-      price: number
-      boxLength?: number
-      boxWidth?: number
-      boxHeight?: number
+    const validation = createPackagingMaterialSchema.safeParse(request.body)
+    if (!validation.success) {
+      return sendError(reply, 400, 'VALIDATION_ERROR', formatZodError(validation.error))
     }
+    const body = validation.data
 
     try {
       const material = await packagingService.createMaterial({
@@ -203,14 +204,11 @@ export class PackagingController {
 
   async updateMaterial(request: FastifyRequest, reply: FastifyReply) {
     const { materialId } = request.params as { materialId: string }
-    const body = request.body as {
-      name?: string
-      quantity?: number
-      price?: number
-      boxLength?: number
-      boxWidth?: number
-      boxHeight?: number
+    const validation = updatePackagingMaterialSchema.safeParse(request.body)
+    if (!validation.success) {
+      return sendError(reply, 400, 'VALIDATION_ERROR', formatZodError(validation.error))
     }
+    const body = validation.data
 
     try {
       const material = await packagingService.updateMaterial(materialId, {

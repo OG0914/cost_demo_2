@@ -21,11 +21,11 @@ vi.mock('../services/packaging.service.js', () => ({
   },
 }))
 
-vi.mock('../utils/http-response.js', () => ({
-  sendSuccess: vi.fn((reply, data, meta) => {
+vi.mock('../lib/response-helpers.js', () => ({
+  sendSuccess: vi.fn((reply, data, meta, status = 200) => {
     const response: { success: boolean; data: unknown; meta?: unknown } = { success: true, data }
     if (meta) response.meta = meta
-    return reply.send(response)
+    return reply.code(status).send(response)
   }),
   sendError: vi.fn((reply, status, code, message) => {
     return reply.code(status).send({ success: false, error: { code, message } })
@@ -98,7 +98,7 @@ describe('PackagingController', () => {
 
   describe('create', () => {
     it('should create config with valid data', async () => {
-      const input = { modelId: 'model1', name: 'New Config', packagingType: 'carton', perBox: 10, perCarton: 100 }
+      const input = { modelId: '550e8400-e29b-41d4-a716-446655440000', name: 'New Config', packagingType: 'carton', perBox: 10, perCarton: 100 }
       vi.mocked(packagingService.create).mockResolvedValue({ id: '1', ...input })
       mockRequest = { body: input }
 

@@ -2,6 +2,11 @@ import type { FastifyInstance } from 'fastify'
 import { prisma } from '@cost/database'
 import { sendError } from '../lib/response-helpers.js'
 import {
+  createModelSchema,
+  updateModelSchema,
+  formatZodError,
+} from '../lib/schemas.js'
+import {
   modelSchema,
   packagingConfigSchema,
   bomMaterialSchema,
@@ -297,13 +302,11 @@ export const modelRoutes = async (app: FastifyInstance) => {
       },
     },
   }, async (request, reply) => {
-    const { name, regulationId, category, series, imageUrl } = request.body as {
-      name: string
-      regulationId: string
-      category: string
-      series: string
-      imageUrl?: string
+    const validation = createModelSchema.safeParse(request.body)
+    if (!validation.success) {
+      return sendError(reply, 400, 'VALIDATION_ERROR', formatZodError(validation.error))
     }
+    const { name, regulationId, category, series, imageUrl } = validation.data
 
     const regulation = await prisma.regulation.findUnique({
       where: { id: regulationId },
@@ -359,13 +362,11 @@ export const modelRoutes = async (app: FastifyInstance) => {
     },
   }, async (request, reply) => {
     const { id } = request.params as { id: string }
-    const { name, regulationId, category, series, imageUrl } = request.body as {
-      name?: string
-      regulationId?: string
-      category?: string
-      series?: string
-      imageUrl?: string
+    const validation = updateModelSchema.safeParse(request.body)
+    if (!validation.success) {
+      return sendError(reply, 400, 'VALIDATION_ERROR', formatZodError(validation.error))
     }
+    const { name, regulationId, category, series, imageUrl } = validation.data
 
     if (regulationId) {
       const regulation = await prisma.regulation.findUnique({

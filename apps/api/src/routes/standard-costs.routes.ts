@@ -1,5 +1,10 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { prisma, type SaleType } from '@cost/database'
+import { sendError } from '../lib/response-helpers.js'
+import {
+  createStandardCostSchema,
+  formatZodError,
+} from '../lib/schemas.js'
 import {
   standardCostSchema,
   errorResponseSchema,
@@ -195,6 +200,10 @@ export const standardCostRoutes = async (app: FastifyInstance) => {
     },
   }, async (request, reply) => {
     const userId = getUserId(request)
+    const validation = createStandardCostSchema.safeParse(request.body)
+    if (!validation.success) {
+      return sendError(reply, 400, 'VALIDATION_ERROR', formatZodError(validation.error))
+    }
     const {
       packagingConfigId,
       saleType,
@@ -205,17 +214,7 @@ export const standardCostRoutes = async (app: FastifyInstance) => {
       adminFee,
       vat,
       totalCost,
-    } = request.body as {
-      packagingConfigId: string
-      saleType: string
-      materialCost: number
-      packagingCost: number
-      processCost: number
-      shippingCost: number
-      adminFee: number
-      vat: number
-      totalCost: number
-    }
+    } = validation.data
 
     const config = await prisma.packagingConfig.findUnique({
       where: { id: packagingConfigId },
@@ -233,7 +232,7 @@ export const standardCostRoutes = async (app: FastifyInstance) => {
       const lastVersion = await tx.standardCost.findFirst({
         where: {
           packagingConfigId,
-          saleType: saleType as 'domestic' | 'export',
+          saleType: saleType,
         },
         orderBy: { version: 'desc' },
       })
@@ -242,7 +241,7 @@ export const standardCostRoutes = async (app: FastifyInstance) => {
       await tx.standardCost.updateMany({
         where: {
           packagingConfigId,
-          saleType: saleType as 'domestic' | 'export',
+          saleType: saleType,
           isCurrent: true,
         },
         data: { isCurrent: false },
@@ -251,7 +250,7 @@ export const standardCostRoutes = async (app: FastifyInstance) => {
       return tx.standardCost.create({
         data: {
           packagingConfigId,
-          saleType: saleType as 'domestic' | 'export',
+          saleType: saleType,
           version: (lastVersion?.version || 0) + 1,
           isCurrent: true,
           materialCost,

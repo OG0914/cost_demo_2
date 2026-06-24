@@ -166,6 +166,102 @@ export type CreateQuotationInput = z.infer<typeof createQuotationSchema>
 export type UpdateQuotationInput = z.infer<typeof updateQuotationSchema>
 export type CalculateQuotationInput = z.infer<typeof calculateQuotationSchema>
 
+// ==================== PackagingConfig Schemas ====================
+
+export const createPackagingConfigSchema = z.object({
+  modelId: z.string().uuid('型号ID格式不正确'),
+  name: z.string().min(1, '名称不能为空').max(100, '名称最多100字符'),
+  packagingType: z.string().min(1, '包装类型不能为空').max(50, '包装类型最多50字符'),
+  perBox: z.number().int().nonnegative('每盒数量必须为非负整数'),
+  perCarton: z.number().int().nonnegative('每箱数量必须为非负整数'),
+})
+
+export const updatePackagingConfigSchema = createPackagingConfigSchema
+  .omit({ modelId: true })
+  .partial()
+
+export type CreatePackagingConfigInput = z.infer<typeof createPackagingConfigSchema>
+export type UpdatePackagingConfigInput = z.infer<typeof updatePackagingConfigSchema>
+
+// ==================== ProcessConfig Schemas ====================
+
+export const processUnitSchema = z.enum(['piece', 'dozen'])
+
+export const createProcessConfigSchema = z.object({
+  name: z.string().min(1, '工序名称不能为空').max(100, '工序名称最多100字符'),
+  price: z.number().nonnegative('单价不能为负数'),
+  unit: processUnitSchema,
+  sortOrder: z.number().int().nonnegative('排序必须为非负整数').optional(),
+})
+
+export const updateProcessConfigSchema = createProcessConfigSchema.partial()
+
+export type CreateProcessConfigInput = z.infer<typeof createProcessConfigSchema>
+export type UpdateProcessConfigInput = z.infer<typeof updateProcessConfigSchema>
+
+// ==================== PackagingMaterial Schemas ====================
+
+export const createPackagingMaterialSchema = z.object({
+  name: z.string().min(1, '包材名称不能为空').max(100, '包材名称最多100字符'),
+  quantity: z.number().nonnegative('数量不能为负数'),
+  price: z.number().nonnegative('单价不能为负数'),
+  boxLength: z.number().nonnegative('长度不能为负数').optional(),
+  boxWidth: z.number().nonnegative('宽度不能为负数').optional(),
+  boxHeight: z.number().nonnegative('高度不能为负数').optional(),
+})
+
+export const updatePackagingMaterialSchema = createPackagingMaterialSchema.partial()
+
+export type CreatePackagingMaterialInput = z.infer<typeof createPackagingMaterialSchema>
+export type UpdatePackagingMaterialInput = z.infer<typeof updatePackagingMaterialSchema>
+
+// ==================== BomMaterial Schemas ====================
+
+export const createBomMaterialSchema = z.object({
+  modelId: z.string().uuid('型号ID格式不正确'),
+  materialId: z.string().uuid('物料ID格式不正确'),
+  quantity: z.number().positive('数量必须大于0'),
+  sortOrder: z.number().int().nonnegative('排序必须为非负整数').optional(),
+})
+
+export const updateBomMaterialSchema = createBomMaterialSchema
+  .omit({ modelId: true, materialId: true })
+  .partial()
+
+export type CreateBomMaterialInput = z.infer<typeof createBomMaterialSchema>
+export type UpdateBomMaterialInput = z.infer<typeof updateBomMaterialSchema>
+
+// ==================== Model Schemas ====================
+
+export const createModelSchema = z.object({
+  name: z.string().min(1, '型号名称不能为空').max(100, '型号名称最多100字符'),
+  regulationId: z.string().uuid('法规ID格式不正确'),
+  category: z.string().min(1, '分类不能为空').max(50, '分类最多50字符'),
+  series: z.string().min(1, '系列不能为空').max(100, '系列最多100字符'),
+  imageUrl: z.string().url('图片URL格式不正确').optional().or(z.literal('')),
+})
+
+export const updateModelSchema = createModelSchema.partial()
+
+export type CreateModelInput = z.infer<typeof createModelSchema>
+export type UpdateModelInput = z.infer<typeof updateModelSchema>
+
+// ==================== StandardCost Schemas ====================
+
+export const createStandardCostSchema = z.object({
+  packagingConfigId: z.string().uuid('包装配置ID格式不正确'),
+  saleType: saleTypeSchema,
+  materialCost: positiveDecimalSchema,
+  packagingCost: positiveDecimalSchema,
+  processCost: positiveDecimalSchema,
+  shippingCost: positiveDecimalSchema,
+  adminFee: positiveDecimalSchema,
+  vat: positiveDecimalSchema,
+  totalCost: positiveDecimalSchema,
+})
+
+export type CreateStandardCostInput = z.infer<typeof createStandardCostSchema>
+
 // ==================== 验证辅助函数 ====================
 
 export function validateSchema<T>(schema: z.ZodSchema<T>, data: unknown): { success: true; data: T } | { success: false; error: string } {

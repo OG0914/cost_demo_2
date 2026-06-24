@@ -1,5 +1,11 @@
 import type { FastifyInstance } from 'fastify'
 import { prisma } from '@cost/database'
+import { sendError } from '../lib/response-helpers.js'
+import {
+  createBomMaterialSchema,
+  updateBomMaterialSchema,
+  formatZodError,
+} from '../lib/schemas.js'
 import {
   bomMaterialSchema,
   errorResponseSchema,
@@ -123,12 +129,11 @@ export const bomRoutes = async (app: FastifyInstance) => {
       },
     },
   }, async (request, reply) => {
-    const { modelId, materialId, quantity, sortOrder } = request.body as {
-      modelId: string
-      materialId: string
-      quantity: number
-      sortOrder?: number
+    const validation = createBomMaterialSchema.safeParse(request.body)
+    if (!validation.success) {
+      return sendError(reply, 400, 'VALIDATION_ERROR', formatZodError(validation.error))
     }
+    const { modelId, materialId, quantity, sortOrder } = validation.data
 
     // 验证型号和原材料是否存在
     const [model, material] = await Promise.all([
@@ -203,10 +208,11 @@ export const bomRoutes = async (app: FastifyInstance) => {
     },
   }, async (request, reply) => {
     const { id } = request.params as { id: string }
-    const { quantity, sortOrder } = request.body as {
-      quantity?: number
-      sortOrder?: number
+    const validation = updateBomMaterialSchema.safeParse(request.body)
+    if (!validation.success) {
+      return sendError(reply, 400, 'VALIDATION_ERROR', formatZodError(validation.error))
     }
+    const { quantity, sortOrder } = validation.data
 
     const bomMaterial = await prisma.bomMaterial.update({
       where: { id },
