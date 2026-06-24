@@ -1,6 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify'
 import { createCustomerSchema, updateCustomerSchema, formatZodError } from '../lib/schemas.js'
-import { sendSuccess, sendError, sendNotFound } from '../utils/http-response.js'
+import { sendSuccess, sendError, sendNotFound } from '../lib/response-helpers.js'
 import { customerService } from '../services/customer.service.js'
 import type { CreateCustomerInput, UpdateCustomerInput } from '../services/customer.service.js'
 import type { CustomerFilter } from '../repositories/customer.repository.js'

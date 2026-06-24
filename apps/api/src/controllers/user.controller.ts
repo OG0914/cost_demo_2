@@ -1,6 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify'
 import { createUserSchema, updateUserSchema, formatZodError } from '../lib/schemas.js'
-import { sendSuccess, sendError, sendNotFound } from '../utils/http-response.js'
+import { sendSuccess, sendError, sendNotFound } from '../lib/response-helpers.js'
 import { userService } from '../services/user.service.js'
 import type { CreateUserInput, UpdateUserInput } from '../services/user.service.js'
 import type { PaginationParams } from '../repositories/user.repository.js'

@@ -13,7 +13,7 @@ vi.mock('../services/customer.service.js', () => ({
   },
 }))
 
-vi.mock('../utils/http-response.js', () => ({
+vi.mock('../lib/response-helpers.js', () => ({
   sendSuccess: vi.fn((reply, data, meta, status = 200) => {
     const response: { success: boolean; data: unknown; meta?: unknown } = { success: true, data }
     if (meta) response.meta = meta
