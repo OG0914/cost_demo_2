@@ -48,15 +48,25 @@ import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog'
 import { toast } from 'sonner'
 import { useModels } from '@/hooks/api/use-models'
 import { useRegulations } from '@/hooks/api/use-regulations'
+import { useSystemConfig } from '@/hooks/api/use-system-config'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Model, Regulation } from '@cost/shared-types'
 
-const categories = ['半面罩', '口罩', '全面罩', '配件']
-const series = ['D系列', 'P系列', 'N系列', 'X系列']
+const DEFAULT_CATEGORIES = ['半面罩', '口罩', '全面罩', '配件']
+const DEFAULT_SERIES = ['D系列', 'P系列', 'N系列', 'X系列']
+
+function parseStringArray(value: unknown, fallback: string[]): string[] {
+  if (Array.isArray(value) && value.every((item) => typeof item === 'string')) {
+    return value as string[]
+  }
+  return fallback
+}
 
 export default function ModelsPage() {
   const { models, isLoading: isLoadingModels, create, update, delete: deleteModel, isCreating, isUpdating, isDeleting } = useModels()
   const { regulations, isLoading: isLoadingRegulations } = useRegulations()
+  const { data: seriesConfig } = useSystemConfig('modelSeries')
+  const { data: categoriesConfig } = useSystemConfig('modelCategories')
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [regulationFilter, setRegulationFilter] = useState<string>('all')
@@ -70,6 +80,9 @@ export default function ModelsPage() {
     category: '',
     series: '',
   })
+
+  const categories = parseStringArray(categoriesConfig?.value, DEFAULT_CATEGORIES)
+  const series = parseStringArray(seriesConfig?.value, DEFAULT_SERIES)
 
   const isLoading = isLoadingModels || isLoadingRegulations
 

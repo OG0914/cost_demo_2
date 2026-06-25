@@ -72,6 +72,7 @@ import {
 import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog'
 import { toast } from 'sonner'
 import { useUsers, useSystemConfigs, useUpdateSystemConfig } from '@/hooks/api'
+import { ModelDictionaryConfig } from '@/components/system/model-dictionary-config'
 import type { User } from '@cost/shared-types'
 import type { Role } from '@/lib/types'
 
@@ -616,6 +617,10 @@ export default function SystemPage() {
                   <Settings className="mr-2 size-4" />
                   修改配置
                 </Button>
+              </div>
+
+              <div className="mt-10">
+                <ModelDictionaryConfig />
               </div>
             </>
           )}
