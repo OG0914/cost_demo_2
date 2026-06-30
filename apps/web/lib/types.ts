@@ -64,7 +64,11 @@ export interface PackagingConfig {
   modelId: string
   name: string
   packagingType: string
-  layerConfig?: Record<string, number>
+  perBox?: number | null
+  perCarton: number
+  layer1: number
+  layer2: number
+  layer3?: number | null
 }
 
 export interface ProcessConfig {
@@ -79,10 +83,13 @@ export interface ProcessConfig {
 export interface PackagingMaterial {
   id: string
   packagingConfigId: string
-  name: string
+  materialId: string
+  material: Material
   quantity: number
-  price: number
-  boxVolume?: { length: number; width: number; height: number }
+  boxLength?: number
+  boxWidth?: number
+  boxHeight?: number
+  boxVolume?: number
 }
 
 // ==================== 成本与报价 ====================
@@ -163,7 +170,22 @@ export interface SystemConfig {
   exchangeRate: number
   fcl20Rate: number
   fcl40Rate: number
-  lclBaseRate: number
+  fcl20Volume: number
+  fcl40Volume: number
+  lclHandlingFee: number
+  lclDocumentFee: number
+  lclUnitFee: number
+  lclTier1: number
+  lclTier2: number
+  lclTier3: number
+  lclTier4: number
+  lclTier5: number
+  lclTier6: number
+  lclTier7: number
+  lclTier8: number
+  lclTier9: number
+  lclTier10: number
+  lclTierDefault: number
 }
 
 // ==================== 统计数据 ====================

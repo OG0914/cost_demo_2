@@ -49,7 +49,7 @@ export default function BomPage() {
   const [newMaterial, setNewMaterial] = useState({ materialId: '', quantity: '' })
   const [copyTargetModelId, setCopyTargetModelId] = useState<string>('')
 
-  const { bom, materials, models, isLoading, create, delete: deleteBom } = useBom(selectedModelId)
+  const { bom, materials, models, isLoading, create, copy, delete: deleteBom, isCopying } = useBom(selectedModelId)
 
   // 设置默认选中的型号
   const effectiveModelId = selectedModelId || (models[0]?.id ?? '')
@@ -93,7 +93,10 @@ export default function BomPage() {
       toast.error('请选择目标型号')
       return
     }
-    toast.success('BOM已复制')
+    copy({
+      sourceModelId: effectiveModelId,
+      targetModelId: copyTargetModelId,
+    })
     setCopyDialogOpen(false)
     setCopyTargetModelId('')
   }
@@ -368,8 +371,8 @@ export default function BomPage() {
             <Button variant="outline" onClick={() => setCopyDialogOpen(false)}>
               取消
             </Button>
-            <Button onClick={handleCopyBom}>
-              确认复制
+            <Button onClick={handleCopyBom} disabled={isCopying || !copyTargetModelId}>
+              {isCopying ? '复制中...' : '确认复制'}
             </Button>
           </DialogFooter>
         </DialogContent>

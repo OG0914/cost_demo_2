@@ -36,6 +36,7 @@ import type {
   CreateStandardCostRequest,
   DashboardStatsDto,
   SystemConfig,
+  CopyBomRequest,
 } from '@cost/shared-types'
 import { parseApiError, isRetryableError, ErrorCode } from './error-handler'
 
@@ -207,6 +208,8 @@ export const bomApi = {
     apiClient.post('/bom', data),
   update: (id: string, data: UpdateBomMaterialRequest): Promise<ApiResponse<unknown>> =>
     apiClient.put(`/bom/${id}`, data),
+  copy: (data: CopyBomRequest): Promise<ApiResponse<unknown[]>> =>
+    apiClient.post('/bom/copy', data),
   delete: (id: string): Promise<ApiResponse<void>> =>
     apiClient.delete(`/bom/${id}`),
 }

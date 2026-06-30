@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { PackagingController } from './packaging.controller.js'
 import { packagingService } from '../services/packaging.service.js'
 import type { FastifyRequest, FastifyReply } from 'fastify'
@@ -52,10 +52,10 @@ describe('PackagingController', () => {
   describe('getList', () => {
     it('should return packaging config list', async () => {
       const mockConfigs = {
-        data: [{ id: '1', name: 'Config 1', packagingType: 'box', perBox: 10, perCarton: 100 }],
+        data: [{ id: '1', name: 'Config 1', packagingType: 'standard_box', perBox: 50, perCarton: 200, layer1: 1, layer2: 50, layer3: 4 }],
         meta: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
       }
-      vi.mocked(packagingService.getList).mockResolvedValue(mockConfigs)
+      vi.mocked(packagingService.getList).mockResolvedValue(mockConfigs as never)
       mockRequest = { query: { page: '1', pageSize: '20', modelId: 'model1' } }
 
       await controller.getList(mockRequest as FastifyRequest, mockReply as FastifyReply)
@@ -75,7 +75,7 @@ describe('PackagingController', () => {
   describe('getById', () => {
     it('should return config by id', async () => {
       const mockConfig = { id: '1', name: 'Config 1', packagingType: 'box' }
-      vi.mocked(packagingService.getById).mockResolvedValue(mockConfig)
+      vi.mocked(packagingService.getById).mockResolvedValue(mockConfig as never)
       mockRequest = { params: { id: '1' } }
 
       await controller.getById(mockRequest as FastifyRequest, mockReply as FastifyReply)
@@ -98,8 +98,8 @@ describe('PackagingController', () => {
 
   describe('create', () => {
     it('should create config with valid data', async () => {
-      const input = { modelId: '550e8400-e29b-41d4-a716-446655440000', name: 'New Config', packagingType: 'carton', perBox: 10, perCarton: 100 }
-      vi.mocked(packagingService.create).mockResolvedValue({ id: '1', ...input })
+      const input = { modelId: '550e8400-e29b-41d4-a716-446655440000', name: 'New Config', packagingType: 'standard_box', layer1: 1, layer2: 50, layer3: 4 }
+      vi.mocked(packagingService.create).mockResolvedValue({ id: '1', ...input } as never)
       mockRequest = { body: input }
 
       await controller.create(mockRequest as FastifyRequest, mockReply as FastifyReply)
@@ -109,7 +109,7 @@ describe('PackagingController', () => {
 
     it('should return 400 for invalid model', async () => {
       vi.mocked(packagingService.create).mockRejectedValue(new Error('INVALID_MODEL'))
-      mockRequest = { body: { modelId: 'invalid', name: 'Test', packagingType: 'box', perBox: 10, perCarton: 100 } }
+      mockRequest = { body: { modelId: 'invalid', name: 'Test', packagingType: 'standard_box', layer1: 1, layer2: 50 } }
 
       await controller.create(mockRequest as FastifyRequest, mockReply as FastifyReply)
 
@@ -120,7 +120,7 @@ describe('PackagingController', () => {
   describe('getProcesses', () => {
     it('should return processes for config', async () => {
       const processes = [{ id: '1', name: 'Process 1', sortOrder: 1 }]
-      vi.mocked(packagingService.getProcesses).mockResolvedValue(processes)
+      vi.mocked(packagingService.getProcesses).mockResolvedValue(processes as never)
       mockRequest = { params: { id: '1' } }
 
       await controller.getProcesses(mockRequest as FastifyRequest, mockReply as FastifyReply)
@@ -135,7 +135,7 @@ describe('PackagingController', () => {
   describe('createProcess', () => {
     it('should create process with valid data', async () => {
       const input = { name: 'New Process', price: 100, unit: 'piece' as const }
-      vi.mocked(packagingService.createProcess).mockResolvedValue({ id: '1', packagingConfigId: '1', ...input, sortOrder: 1 })
+      vi.mocked(packagingService.createProcess).mockResolvedValue({ id: '1', packagingConfigId: '1', ...input, sortOrder: 1 } as never)
       mockRequest = { params: { id: '1' }, body: input }
 
       await controller.createProcess(mockRequest as FastifyRequest, mockReply as FastifyReply)
@@ -152,8 +152,8 @@ describe('PackagingController', () => {
 
   describe('getMaterials', () => {
     it('should return materials for config', async () => {
-      const materials = [{ id: '1', name: 'Material 1' }]
-      vi.mocked(packagingService.getMaterials).mockResolvedValue(materials)
+      const materials = [{ id: '1', materialId: 'mat1', quantity: 10 }]
+      vi.mocked(packagingService.getMaterials).mockResolvedValue(materials as never)
       mockRequest = { params: { id: '1' } }
 
       await controller.getMaterials(mockRequest as FastifyRequest, mockReply as FastifyReply)
@@ -162,6 +162,56 @@ describe('PackagingController', () => {
         success: true,
         data: materials,
       }))
+    })
+  })
+
+  describe('createMaterial', () => {
+    it('should create material with materialId', async () => {
+      const input = { materialId: '550e8400-e29b-41d4-a716-446655440000', quantity: 10 }
+      vi.mocked(packagingService.createMaterial).mockResolvedValue({ id: '1', packagingConfigId: '1', ...input } as never)
+      mockRequest = { params: { id: '1' }, body: input }
+
+      await controller.createMaterial(mockRequest as FastifyRequest, mockReply as FastifyReply)
+
+      expect(packagingService.createMaterial).toHaveBeenCalledWith(expect.objectContaining({
+        packagingConfigId: '1',
+        materialId: '550e8400-e29b-41d4-a716-446655440000',
+        quantity: 10,
+      }))
+      expect(mockReply.code).toHaveBeenCalledWith(201)
+    })
+
+    it('should return 400 for invalid material', async () => {
+      vi.mocked(packagingService.createMaterial).mockRejectedValue(new Error('INVALID_MATERIAL'))
+      mockRequest = { params: { id: '1' }, body: { materialId: '550e8400-e29b-41d4-a716-446655440000', quantity: 10 } }
+
+      await controller.createMaterial(mockRequest as FastifyRequest, mockReply as FastifyReply)
+
+      expect(mockReply.code).toHaveBeenCalledWith(400)
+    })
+  })
+
+  describe('updateMaterial', () => {
+    it('should update material with materialId', async () => {
+      const input = { materialId: '550e8400-e29b-41d4-a716-446655440001', quantity: 20 }
+      vi.mocked(packagingService.updateMaterial).mockResolvedValue({ id: '1', materialId: '550e8400-e29b-41d4-a716-446655440001', quantity: 20 } as never)
+      mockRequest = { params: { materialId: '1' }, body: input }
+
+      await controller.updateMaterial(mockRequest as FastifyRequest, mockReply as FastifyReply)
+
+      expect(packagingService.updateMaterial).toHaveBeenCalledWith('1', expect.objectContaining({
+        materialId: '550e8400-e29b-41d4-a716-446655440001',
+        quantity: 20,
+      }))
+    })
+
+    it('should return 404 when material not found', async () => {
+      vi.mocked(packagingService.updateMaterial).mockRejectedValue(new Error('NOT_FOUND'))
+      mockRequest = { params: { materialId: '999' }, body: { quantity: 20 } }
+
+      await controller.updateMaterial(mockRequest as FastifyRequest, mockReply as FastifyReply)
+
+      expect(mockReply.code).toHaveBeenCalledWith(404)
     })
   })
 })

@@ -124,9 +124,33 @@ export const modelRoutes = async (app: FastifyInstance) => {
       prisma.model.count({ where }),
     ])
 
+    const modelIds = models.map((m) => m.id)
+
+    const [bomCounts, packagingCounts] = await Promise.all([
+      prisma.bomMaterial.groupBy({
+        by: ['modelId'],
+        where: { modelId: { in: modelIds } },
+        _count: { modelId: true },
+      }),
+      prisma.packagingConfig.groupBy({
+        by: ['modelId'],
+        where: { modelId: { in: modelIds } },
+        _count: { modelId: true },
+      }),
+    ])
+
+    const bomCountMap = new Map(bomCounts.map((c) => [c.modelId, c._count.modelId]))
+    const packagingCountMap = new Map(packagingCounts.map((c) => [c.modelId, c._count.modelId]))
+
+    const data = models.map((m) => ({
+      ...m,
+      bomCount: bomCountMap.get(m.id) ?? 0,
+      packagingConfigCount: packagingCountMap.get(m.id) ?? 0,
+    }))
+
     return {
       success: true,
-      data: models,
+      data,
       meta: {
         page: parseInt(page, 10),
         pageSize: take,

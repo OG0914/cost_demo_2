@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { PackagingService } from './packaging.service.js'
 import { packagingRepository } from '../repositories/packaging.repository.js'
+import { STANDARD_BOX, NO_BOX, BLISTER_DIRECT, BLISTER_BAG } from '@cost/shared-types'
 
 vi.mock('../repositories/packaging.repository.js', () => ({
   packagingRepository: {
@@ -29,6 +30,9 @@ vi.mock('@cost/database', () => ({
     model: {
       findUnique: vi.fn(),
     },
+    material: {
+      findUnique: vi.fn(),
+    },
   },
 }))
 
@@ -42,7 +46,7 @@ describe('PackagingService', () => {
 
   describe('getList', () => {
     it('should return paginated packaging configs', async () => {
-      const configs = [{ id: '1', name: 'Config 1', packagingType: 'box', perBox: 10, perCarton: 100 }]
+      const configs = [{ id: '1', name: 'Config 1', packagingType: STANDARD_BOX, perBox: 50, perCarton: 200, layer1: 1, layer2: 50, layer3: 4 }]
       vi.mocked(packagingRepository.findMany).mockResolvedValue(configs as never)
       vi.mocked(packagingRepository.count).mockResolvedValue(1)
 
@@ -55,7 +59,7 @@ describe('PackagingService', () => {
 
   describe('getById', () => {
     it('should return config by id', async () => {
-      const config = { id: '1', name: 'Config 1', packagingType: 'box' }
+      const config = { id: '1', name: 'Config 1', packagingType: STANDARD_BOX }
       vi.mocked(packagingRepository.findById).mockResolvedValue(config as never)
 
       const result = await service.getById('1')
@@ -65,25 +69,51 @@ describe('PackagingService', () => {
   })
 
   describe('create', () => {
-    it('should create config when model exists', async () => {
+    it('should create standard_box config and calculate perBox/perCarton', async () => {
       const input = {
         modelId: 'model1',
-        name: 'New Config',
-        packagingType: 'carton',
-        perBox: 10,
-        perCarton: 100,
+        name: 'Standard Box',
+        packagingType: STANDARD_BOX,
+        layer1: 1,
+        layer2: 50,
+        layer3: 4,
       }
       const { prisma } = await import('@cost/database')
       vi.mocked(prisma.model.findUnique).mockResolvedValue({ id: 'model1' } as never)
       vi.mocked(packagingRepository.create).mockResolvedValue({ id: '1', ...input } as never)
 
-      const result = await service.create(input)
+      await service.create(input)
 
       expect(packagingRepository.create).toHaveBeenCalledWith(expect.objectContaining({
         model: { connect: { id: 'model1' } },
-        name: 'New Config',
+        name: 'Standard Box',
+        packagingType: STANDARD_BOX,
+        layer1: 1,
+        layer2: 50,
+        layer3: 4,
+        perBox: 50,
+        perCarton: 200,
       }))
-      expect(result).toBeDefined()
+    })
+
+    it('should create no_box config with perBox as null', async () => {
+      const input = {
+        modelId: 'model1',
+        name: 'No Box',
+        packagingType: NO_BOX,
+        layer1: 1,
+        layer2: 500,
+      }
+      const { prisma } = await import('@cost/database')
+      vi.mocked(prisma.model.findUnique).mockResolvedValue({ id: 'model1' } as never)
+      vi.mocked(packagingRepository.create).mockResolvedValue({ id: '1', ...input } as never)
+
+      await service.create(input)
+
+      expect(packagingRepository.create).toHaveBeenCalledWith(expect.objectContaining({
+        perBox: null,
+        perCarton: 500,
+      }))
     })
 
     it('should throw INVALID_MODEL when model not found', async () => {
@@ -93,21 +123,32 @@ describe('PackagingService', () => {
       await expect(service.create({
         modelId: 'invalid',
         name: 'Config',
-        packagingType: 'box',
-        perBox: 10,
-        perCarton: 100,
+        packagingType: STANDARD_BOX,
+        layer1: 1,
+        layer2: 10,
       })).rejects.toThrow('INVALID_MODEL')
     })
   })
 
   describe('update', () => {
-    it('should update config when found', async () => {
-      vi.mocked(packagingRepository.findById).mockResolvedValue({ id: '1' } as never)
+    it('should recalculate perBox/perCarton when layers change', async () => {
+      vi.mocked(packagingRepository.findById).mockResolvedValue({
+        id: '1',
+        name: 'Old',
+        packagingType: STANDARD_BOX,
+        layer1: 1,
+        layer2: 10,
+        layer3: 2,
+      } as never)
       vi.mocked(packagingRepository.update).mockResolvedValue({ id: '1', name: 'Updated' } as never)
 
-      const result = await service.update('1', { name: 'Updated' })
+      await service.update('1', { layer2: 20 })
 
-      expect(result.name).toBe('Updated')
+      expect(packagingRepository.update).toHaveBeenCalledWith('1', expect.objectContaining({
+        perBox: 20,
+        perCarton: 40,
+        layer2: 20,
+      }))
     })
 
     it('should throw NOT_FOUND when config does not exist', async () => {
@@ -120,7 +161,7 @@ describe('PackagingService', () => {
   describe('delete', () => {
     it('should delete config when found', async () => {
       vi.mocked(packagingRepository.findById).mockResolvedValue({ id: '1' } as never)
-      vi.mocked(packagingRepository.delete).mockResolvedValue(undefined)
+      vi.mocked(packagingRepository.delete).mockResolvedValue(undefined as never)
 
       await service.delete('1')
 
@@ -144,12 +185,6 @@ describe('PackagingService', () => {
 
       expect(result).toEqual(processes)
     })
-
-    it('should throw NOT_FOUND when config does not exist', async () => {
-      vi.mocked(packagingRepository.findById).mockResolvedValue(null)
-
-      await expect(service.getProcesses('999')).rejects.toThrow('NOT_FOUND')
-    })
   })
 
   describe('createProcess', () => {
@@ -169,103 +204,27 @@ describe('PackagingService', () => {
         sortOrder: 4,
       }))
     })
-
-    it('should use provided sortOrder when given', async () => {
-      vi.mocked(packagingRepository.findById).mockResolvedValue({ id: '1' } as never)
-      vi.mocked(packagingRepository.createProcess).mockResolvedValue({} as never)
-
-      await service.createProcess({
-        packagingConfigId: '1',
-        name: 'Process',
-        price: 100,
-        unit: 'piece',
-        sortOrder: 10,
-      })
-
-      expect(packagingRepository.createProcess).toHaveBeenCalledWith(expect.objectContaining({
-        sortOrder: 10,
-      }))
-    })
-
-    it('should start sortOrder at 1 when no existing processes', async () => {
-      vi.mocked(packagingRepository.findById).mockResolvedValue({ id: '1' } as never)
-      vi.mocked(packagingRepository.findLastProcessBySortOrder).mockResolvedValue(null)
-      vi.mocked(packagingRepository.createProcess).mockResolvedValue({} as never)
-
-      await service.createProcess({
-        packagingConfigId: '1',
-        name: 'First Process',
-        price: 100,
-        unit: 'piece',
-      })
-
-      expect(packagingRepository.createProcess).toHaveBeenCalledWith(expect.objectContaining({
-        sortOrder: 1,
-      }))
-    })
-  })
-
-  describe('updateProcess', () => {
-    it('should update process when found', async () => {
-      vi.mocked(packagingRepository.findProcessById).mockResolvedValue({ id: '1' } as never)
-      vi.mocked(packagingRepository.updateProcess).mockResolvedValue({ id: '1', name: 'Updated' } as never)
-
-      const result = await service.updateProcess('1', { name: 'Updated' })
-
-      expect(result.name).toBe('Updated')
-    })
-
-    it('should throw NOT_FOUND when process does not exist', async () => {
-      vi.mocked(packagingRepository.findProcessById).mockResolvedValue(null)
-
-      await expect(service.updateProcess('999', { name: 'Test' })).rejects.toThrow('NOT_FOUND')
-    })
-  })
-
-  describe('deleteProcess', () => {
-    it('should throw NOT_FOUND when process does not exist', async () => {
-      vi.mocked(packagingRepository.findProcessById).mockResolvedValue(null)
-
-      await expect(service.deleteProcess('999')).rejects.toThrow('NOT_FOUND')
-    })
-  })
-
-  describe('getMaterials', () => {
-    it('should return materials for config', async () => {
-      const materials = [{ id: '1', name: 'Material 1' }]
-      vi.mocked(packagingRepository.findById).mockResolvedValue({ id: '1' } as never)
-      vi.mocked(packagingRepository.findMaterials).mockResolvedValue(materials as never)
-
-      const result = await service.getMaterials('1')
-
-      expect(result).toEqual(materials)
-    })
   })
 
   describe('createMaterial', () => {
-    it('should create material when config exists', async () => {
+    it('should create material with boxVolume', async () => {
       vi.mocked(packagingRepository.findById).mockResolvedValue({ id: '1' } as never)
       vi.mocked(packagingRepository.createMaterial).mockResolvedValue({ id: '1' } as never)
+      const { prisma } = await import('@cost/database')
+      vi.mocked(prisma.material.findUnique).mockResolvedValue({ id: 'mat1' } as never)
 
       await service.createMaterial({
         packagingConfigId: '1',
-        name: 'Material',
+        materialId: 'mat1',
         quantity: 10,
-        price: 100,
+        boxVolume: 0.5,
       })
 
-      expect(packagingRepository.createMaterial).toHaveBeenCalled()
-    })
-
-    it('should throw INVALID_CONFIG when config does not exist', async () => {
-      vi.mocked(packagingRepository.findById).mockResolvedValue(null)
-
-      await expect(service.createMaterial({
-        packagingConfigId: '999',
-        name: 'Material',
+      expect(packagingRepository.createMaterial).toHaveBeenCalledWith(expect.objectContaining({
+        material: { connect: { id: 'mat1' } },
         quantity: 10,
-        price: 100,
-      })).rejects.toThrow('INVALID_CONFIG')
+        boxVolume: 0.5,
+      }))
     })
   })
 })

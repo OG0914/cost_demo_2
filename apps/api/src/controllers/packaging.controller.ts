@@ -186,17 +186,22 @@ export class PackagingController {
     try {
       const material = await packagingService.createMaterial({
         packagingConfigId,
-        name: body.name,
+        materialId: body.materialId,
         quantity: body.quantity,
-        price: body.price,
         boxLength: body.boxLength,
         boxWidth: body.boxWidth,
         boxHeight: body.boxHeight,
+        boxVolume: body.boxVolume,
       })
-      return sendSuccess(reply, material)
+      return sendSuccess(reply, material, undefined, 201)
     } catch (error) {
-      if (error instanceof Error && error.message === 'INVALID_CONFIG') {
-        return sendError(reply, 400, 'INVALID_CONFIG', '包装配置不存在')
+      if (error instanceof Error) {
+        if (error.message === 'INVALID_CONFIG') {
+          return sendError(reply, 400, 'INVALID_CONFIG', '包装配置不存在')
+        }
+        if (error.message === 'INVALID_MATERIAL') {
+          return sendError(reply, 400, 'INVALID_MATERIAL', '原料不存在')
+        }
       }
       throw error
     }
@@ -212,17 +217,22 @@ export class PackagingController {
 
     try {
       const material = await packagingService.updateMaterial(materialId, {
-        name: body.name,
+        materialId: body.materialId,
         quantity: body.quantity,
-        price: body.price,
         boxLength: body.boxLength,
         boxWidth: body.boxWidth,
         boxHeight: body.boxHeight,
+        boxVolume: body.boxVolume,
       })
       return sendSuccess(reply, material)
     } catch (error) {
-      if (error instanceof Error && error.message === 'NOT_FOUND') {
-        return sendNotFound(reply, '包材配置')
+      if (error instanceof Error) {
+        if (error.message === 'NOT_FOUND') {
+          return sendNotFound(reply, '包材配置')
+        }
+        if (error.message === 'INVALID_MATERIAL') {
+          return sendError(reply, 400, 'INVALID_MATERIAL', '原料不存在')
+        }
       }
       throw error
     }

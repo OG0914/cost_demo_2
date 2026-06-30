@@ -1,7 +1,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { packagingApi, modelApi } from '@/lib/api'
+import { packagingApi, modelApi, materialApi } from '@/lib/api'
 import { toast } from 'sonner'
 import type {
   CreatePackagingConfigRequest,
@@ -10,6 +10,8 @@ import type {
   UpdateProcessConfigRequest,
   CreatePackagingMaterialRequest,
   UpdatePackagingMaterialRequest,
+  Model,
+  Material,
 } from '@cost/shared-types'
 
 // 包装配置 Hook
@@ -21,7 +23,17 @@ export function usePackagingConfigs(modelId?: string) {
     queryFn: async () => {
       if (!modelId) return []  // 未选型号返回空数组
       const response = await packagingApi.getList({ modelId })
-      return response.data
+      return (response.data ?? []) as Array<{
+        id: string
+        name: string
+        packagingType: string
+        modelId: string
+        perBox: number | null
+        perCarton: number
+        layer1: number
+        layer2: number
+        layer3: number | null
+      }>
     },
     enabled: !!modelId,  // 未选型号时不发起请求
   })
@@ -30,7 +42,7 @@ export function usePackagingConfigs(modelId?: string) {
     queryKey: ['models'],
     queryFn: async () => {
       const response = await modelApi.getList()
-      return response.data
+      return (response.data ?? []) as Model[]
     },
   })
 
@@ -39,6 +51,7 @@ export function usePackagingConfigs(modelId?: string) {
     onSuccess: () => {
       toast.success('包装配置已创建')
       queryClient.invalidateQueries({ queryKey: ['packaging-configs'] })
+      queryClient.invalidateQueries({ queryKey: ['models'] })
     },
     onError: (error: Error) => {
       toast.error(error.message || '创建失败')
@@ -51,6 +64,7 @@ export function usePackagingConfigs(modelId?: string) {
     onSuccess: () => {
       toast.success('包装配置已更新')
       queryClient.invalidateQueries({ queryKey: ['packaging-configs'] })
+      queryClient.invalidateQueries({ queryKey: ['models'] })
     },
     onError: (error: Error) => {
       toast.error(error.message || '更新失败')
@@ -62,6 +76,7 @@ export function usePackagingConfigs(modelId?: string) {
     onSuccess: () => {
       toast.success('包装配置已删除')
       queryClient.invalidateQueries({ queryKey: ['packaging-configs'] })
+      queryClient.invalidateQueries({ queryKey: ['models'] })
     },
     onError: (error: Error) => {
       toast.error(error.message || '删除失败')
@@ -151,9 +166,26 @@ export function usePackagingMaterials(packagingConfigId: string) {
     queryKey: ['packaging-materials', packagingConfigId],
     queryFn: async () => {
       const response = await packagingApi.getMaterials(packagingConfigId)
-      return response.data
+      return (response.data ?? []) as Array<{
+        id: string
+        materialId: string
+        material: Material
+        quantity: number
+        boxLength?: number
+        boxWidth?: number
+        boxHeight?: number
+        boxVolume?: number
+      }>
     },
     enabled: !!packagingConfigId,
+  })
+
+  const { data: materialsData, isLoading: isLoadingMaterials } = useQuery({
+    queryKey: ['materials'],
+    queryFn: async () => {
+      const response = await materialApi.getList()
+      return (response.data ?? []) as Material[]
+    },
   })
 
   const createMutation = useMutation({
@@ -162,6 +194,7 @@ export function usePackagingMaterials(packagingConfigId: string) {
     onSuccess: () => {
       toast.success('包材已添加')
       queryClient.invalidateQueries({ queryKey: ['packaging-materials', packagingConfigId] })
+      queryClient.invalidateQueries({ queryKey: ['models'] })
     },
     onError: (error: Error) => {
       toast.error(error.message || '添加失败')
@@ -174,6 +207,7 @@ export function usePackagingMaterials(packagingConfigId: string) {
     onSuccess: () => {
       toast.success('包材已更新')
       queryClient.invalidateQueries({ queryKey: ['packaging-materials', packagingConfigId] })
+      queryClient.invalidateQueries({ queryKey: ['models'] })
     },
     onError: (error: Error) => {
       toast.error(error.message || '更新失败')
@@ -185,6 +219,7 @@ export function usePackagingMaterials(packagingConfigId: string) {
     onSuccess: () => {
       toast.success('包材已删除')
       queryClient.invalidateQueries({ queryKey: ['packaging-materials', packagingConfigId] })
+      queryClient.invalidateQueries({ queryKey: ['models'] })
     },
     onError: (error: Error) => {
       toast.error(error.message || '删除失败')
@@ -193,7 +228,8 @@ export function usePackagingMaterials(packagingConfigId: string) {
 
   return {
     packagingMaterials: data ?? [],
-    isLoading,
+    materials: materialsData ?? [],
+    isLoading: isLoading || isLoadingMaterials,
     error,
     create: createMutation.mutate,
     update: updateMutation.mutate,

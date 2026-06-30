@@ -15,7 +15,9 @@ export class PackagingRepository {
     processConfigs: {
       orderBy: { sortOrder: 'asc' } as const,
     },
-    packagingMaterials: true,
+    packagingMaterials: {
+      include: { material: true },
+    },
   } as const
 
   private readonly packagingConfigListInclude = {
@@ -98,6 +100,7 @@ export class PackagingRepository {
   async findMaterials(packagingConfigId: string) {
     return prisma.packagingMaterial.findMany({
       where: { packagingConfigId },
+      include: { material: true },
     })
   }
 

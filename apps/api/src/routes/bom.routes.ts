@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify'
 import { prisma } from '@cost/database'
 import { sendError } from '../lib/response-helpers.js'
+import { bomService } from '../services/bom.service.js'
+import type { CopyBomRequest } from '@cost/shared-types'
 import {
   createBomMaterialSchema,
   updateBomMaterialSchema,
@@ -268,5 +270,59 @@ export const bomRoutes = async (app: FastifyInstance) => {
     await prisma.bomMaterial.delete({ where: { id } })
 
     return { success: true, data: { message: 'BOM物料已删除' } }
+  })
+
+
+  // POST /api/v1/bom/copy
+  app.post('/copy', {
+    onRequest: [app.authenticate],
+    schema: {
+      tags: ['BOM'],
+      summary: '复制 BOM 物料',
+      description: '将源型号的 BOM 物料复制到目标型号',
+      security: [{ bearerAuth: [] }],
+      body: {
+        type: 'object',
+        required: ['sourceModelId', 'targetModelId'],
+        properties: {
+          sourceModelId: { type: 'string', format: 'uuid', description: '源型号ID' },
+          targetModelId: { type: 'string', format: 'uuid', description: '目标型号ID' },
+        },
+      },
+      response: {
+        201: {
+          description: 'BOM 复制成功',
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: {
+              type: 'array',
+              items: bomMaterialSchema,
+            },
+          },
+        },
+        400: {
+          description: '验证错误或型号不存在',
+          ...errorResponseSchema,
+        },
+        401: {
+          description: '未授权',
+          ...errorResponseSchema,
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { sourceModelId, targetModelId } = request.body as CopyBomRequest
+
+    try {
+      const result = await bomService.copyBom({ sourceModelId, targetModelId })
+      return reply.code(201).send({ success: true, data: result })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '复制失败'
+      return reply.code(400).send({
+        success: false,
+        error: { code: 'COPY_FAILED', message },
+      })
+    }
   })
 }

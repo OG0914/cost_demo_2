@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils'
 import { useRegulations, useCustomers, useModels, useQuotations } from '@/hooks/api'
 import { modelApi, packagingApi, quotationApi } from '@/lib/api'
 import type { SaleType, ShippingType } from '@/lib/types'
+import { PACKAGING_TYPE_META, formatPackagingDescription } from '@/lib/constants'
 
 const steps = [
   { id: 1, title: '选择法规', description: '产品适用标准' },
@@ -59,7 +60,14 @@ export default function NewCostPage() {
   const selectedCustomer = customers?.find((c) => c.id === formData.customerId)
 
   // 包装配置
-  const [packagingConfigs, setPackagingConfigs] = useState<Array<{ id: string; name: string; packagingType: string }>>([])
+  const [packagingConfigs, setPackagingConfigs] = useState<Array<{
+    id: string
+    name: string
+    packagingType: string
+    layer1: number
+    layer2: number
+    layer3?: number | null
+  }>>([])
   const [isLoadingPackaging, setIsLoadingPackaging] = useState(false)
 
   // 成本计算
@@ -79,7 +87,14 @@ export default function NewCostPage() {
     setIsLoadingPackaging(true)
     try {
       const response = await modelApi.getPackagingConfigs(modelId)
-      setPackagingConfigs((response.data?.data ?? []) as Array<{ id: string; name: string; packagingType: string }>)
+      setPackagingConfigs((response.data?.data ?? []) as Array<{
+        id: string
+        name: string
+        packagingType: string
+        layer1: number
+        layer2: number
+        layer3?: number | null
+      }>)
     } finally {
       setIsLoadingPackaging(false)
     }
@@ -328,21 +343,26 @@ export default function NewCostPage() {
                         onValueChange={(value) => setFormData({ ...formData, packagingConfigId: value })}
                         className="grid gap-3"
                       >
-                        {packagingConfigs.map((config) => (
-                          <label
-                            key={config.id}
-                            className={cn(
-                              'flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50',
-                              formData.packagingConfigId === config.id && 'border-foreground bg-muted/50'
-                            )}
-                          >
-                            <RadioGroupItem value={config.id} />
-                            <div>
-                              <p className="font-medium">{config.name}</p>
-                              <p className="text-xs text-muted-foreground">{config.packagingType}</p>
-                            </div>
-                          </label>
-                        ))}
+                        {packagingConfigs.map((config) => {
+                          const meta = PACKAGING_TYPE_META[config.packagingType as keyof typeof PACKAGING_TYPE_META]
+                          const description = formatPackagingDescription(config.packagingType, config.layer1, config.layer2, config.layer3)
+                          return (
+                            <label
+                              key={config.id}
+                              className={cn(
+                                'flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50',
+                                formData.packagingConfigId === config.id && 'border-foreground bg-muted/50'
+                              )}
+                            >
+                              <RadioGroupItem value={config.id} />
+                              <div>
+                                <p className="font-medium">{config.name}</p>
+                                <p className="text-xs text-muted-foreground">{meta?.label ?? config.packagingType}</p>
+                                <p className="text-xs text-muted-foreground">{description}</p>
+                              </div>
+                            </label>
+                          )
+                        })}
                       </RadioGroup>
                     )}
                   </div>

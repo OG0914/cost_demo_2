@@ -83,7 +83,22 @@ const DEFAULT_CONFIG = {
   exchangeRate: 7.2,
   fcl20Rate: 3500,
   fcl40Rate: 5800,
-  lclBaseRate: 45,
+  fcl20Volume: 950,
+  fcl40Volume: 1950,
+  lclHandlingFee: 500,
+  lclDocumentFee: 500,
+  lclUnitFee: 170,
+  lclTier1: 80,
+  lclTier2: 140,
+  lclTier3: 200,
+  lclTier4: 260,
+  lclTier5: 320,
+  lclTier6: 380,
+  lclTier7: 440,
+  lclTier8: 500,
+  lclTier9: 560,
+  lclTier10: 620,
+  lclTierDefault: 680,
 }
 
 // 从 SystemConfig[] 解析为页面需要的结构
@@ -103,7 +118,22 @@ function parseConfig(configs: { key: string; value: unknown }[]) {
     exchangeRate: getValue('exchangeRate'),
     fcl20Rate: getValue('fcl20Rate'),
     fcl40Rate: getValue('fcl40Rate'),
-    lclBaseRate: getValue('lclBaseRate'),
+    fcl20Volume: getValue('fcl20Volume'),
+    fcl40Volume: getValue('fcl40Volume'),
+    lclHandlingFee: getValue('lclHandlingFee'),
+    lclDocumentFee: getValue('lclDocumentFee'),
+    lclUnitFee: getValue('lclUnitFee'),
+    lclTier1: getValue('lclTier1'),
+    lclTier2: getValue('lclTier2'),
+    lclTier3: getValue('lclTier3'),
+    lclTier4: getValue('lclTier4'),
+    lclTier5: getValue('lclTier5'),
+    lclTier6: getValue('lclTier6'),
+    lclTier7: getValue('lclTier7'),
+    lclTier8: getValue('lclTier8'),
+    lclTier9: getValue('lclTier9'),
+    lclTier10: getValue('lclTier10'),
+    lclTierDefault: getValue('lclTierDefault'),
   }
 }
 
@@ -159,7 +189,22 @@ export default function SystemPage() {
     exchangeRate: config.exchangeRate.toString(),
     fcl20Rate: config.fcl20Rate.toString(),
     fcl40Rate: config.fcl40Rate.toString(),
-    lclBaseRate: config.lclBaseRate.toString(),
+    fcl20Volume: config.fcl20Volume.toString(),
+    fcl40Volume: config.fcl40Volume.toString(),
+    lclHandlingFee: config.lclHandlingFee.toString(),
+    lclDocumentFee: config.lclDocumentFee.toString(),
+    lclUnitFee: config.lclUnitFee.toString(),
+    lclTier1: config.lclTier1.toString(),
+    lclTier2: config.lclTier2.toString(),
+    lclTier3: config.lclTier3.toString(),
+    lclTier4: config.lclTier4.toString(),
+    lclTier5: config.lclTier5.toString(),
+    lclTier6: config.lclTier6.toString(),
+    lclTier7: config.lclTier7.toString(),
+    lclTier8: config.lclTier8.toString(),
+    lclTier9: config.lclTier9.toString(),
+    lclTier10: config.lclTier10.toString(),
+    lclTierDefault: config.lclTierDefault.toString(),
   })
 
   const filteredUsers = (users || []).filter(
@@ -282,7 +327,22 @@ export default function SystemPage() {
       { key: 'exchangeRate', value: parseFloat(configFormData.exchangeRate) },
       { key: 'fcl20Rate', value: parseFloat(configFormData.fcl20Rate) },
       { key: 'fcl40Rate', value: parseFloat(configFormData.fcl40Rate) },
-      { key: 'lclBaseRate', value: parseFloat(configFormData.lclBaseRate) },
+      { key: 'fcl20Volume', value: parseFloat(configFormData.fcl20Volume) },
+      { key: 'fcl40Volume', value: parseFloat(configFormData.fcl40Volume) },
+      { key: 'lclHandlingFee', value: parseFloat(configFormData.lclHandlingFee) },
+      { key: 'lclDocumentFee', value: parseFloat(configFormData.lclDocumentFee) },
+      { key: 'lclUnitFee', value: parseFloat(configFormData.lclUnitFee) },
+      { key: 'lclTier1', value: parseFloat(configFormData.lclTier1) },
+      { key: 'lclTier2', value: parseFloat(configFormData.lclTier2) },
+      { key: 'lclTier3', value: parseFloat(configFormData.lclTier3) },
+      { key: 'lclTier4', value: parseFloat(configFormData.lclTier4) },
+      { key: 'lclTier5', value: parseFloat(configFormData.lclTier5) },
+      { key: 'lclTier6', value: parseFloat(configFormData.lclTier6) },
+      { key: 'lclTier7', value: parseFloat(configFormData.lclTier7) },
+      { key: 'lclTier8', value: parseFloat(configFormData.lclTier8) },
+      { key: 'lclTier9', value: parseFloat(configFormData.lclTier9) },
+      { key: 'lclTier10', value: parseFloat(configFormData.lclTier10) },
+      { key: 'lclTierDefault', value: parseFloat(configFormData.lclTierDefault) },
     ]
 
     Promise.all(
@@ -574,29 +634,38 @@ export default function SystemPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle>运费配置</CardTitle>
-                    <CardDescription>各类运输方式的基础运费</CardDescription>
+                    <CardDescription>FCL 柜型容积与运费、LCL 档位价格</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex items-center justify-between rounded-lg border p-4">
                       <div>
                         <p className="font-medium">整柜20尺 (FCL 20)</p>
-                        <p className="text-sm text-muted-foreground">20尺集装箱运费</p>
+                        <p className="text-sm text-muted-foreground">容积 {config.fcl20Volume} cuft · 运费 ${config.fcl20Rate.toLocaleString()}</p>
                       </div>
-                      <span className="text-xl font-bold">¥{config.fcl20Rate.toLocaleString()}</span>
+                      <span className="text-xl font-bold">${config.fcl20Rate.toLocaleString()}</span>
                     </div>
                     <div className="flex items-center justify-between rounded-lg border p-4">
                       <div>
                         <p className="font-medium">整柜40尺 (FCL 40)</p>
-                        <p className="text-sm text-muted-foreground">40尺集装箱运费</p>
+                        <p className="text-sm text-muted-foreground">容积 {config.fcl40Volume} cuft · 运费 ${config.fcl40Rate.toLocaleString()}</p>
                       </div>
-                      <span className="text-xl font-bold">¥{config.fcl40Rate.toLocaleString()}</span>
+                      <span className="text-xl font-bold">${config.fcl40Rate.toLocaleString()}</span>
                     </div>
-                    <div className="flex items-center justify-between rounded-lg border p-4">
-                      <div>
-                        <p className="font-medium">拼箱 (LCL)</p>
-                        <p className="text-sm text-muted-foreground">每立方米运费</p>
+                    <div className="rounded-lg border p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">拼箱 (LCL)</p>
+                          <p className="text-sm text-muted-foreground">操作费 ¥{config.lclHandlingFee} · 文件费 ¥{config.lclDocumentFee} · 拼箱费 ¥{config.lclUnitFee}/CBM</p>
+                        </div>
                       </div>
-                      <span className="text-xl font-bold">¥{config.lclBaseRate}/CBM</span>
+                      <div className="mt-3 grid grid-cols-5 gap-2 text-xs text-muted-foreground">
+                        {Array.from({ length: 10 }, (_, i) => i + 1).map((tier) => (
+                          <div key={tier} className="rounded bg-muted px-2 py-1">
+                            {tier}CBM: ${config[`lclTier${tier}` as keyof typeof config]}
+                          </div>
+                        ))}
+                        <div className="rounded bg-muted px-2 py-1">&gt;10: ${config.lclTierDefault}</div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -610,7 +679,22 @@ export default function SystemPage() {
                     exchangeRate: config.exchangeRate.toString(),
                     fcl20Rate: config.fcl20Rate.toString(),
                     fcl40Rate: config.fcl40Rate.toString(),
-                    lclBaseRate: config.lclBaseRate.toString(),
+                    fcl20Volume: config.fcl20Volume.toString(),
+                    fcl40Volume: config.fcl40Volume.toString(),
+                    lclHandlingFee: config.lclHandlingFee.toString(),
+                    lclDocumentFee: config.lclDocumentFee.toString(),
+                    lclUnitFee: config.lclUnitFee.toString(),
+                    lclTier1: config.lclTier1.toString(),
+                    lclTier2: config.lclTier2.toString(),
+                    lclTier3: config.lclTier3.toString(),
+                    lclTier4: config.lclTier4.toString(),
+                    lclTier5: config.lclTier5.toString(),
+                    lclTier6: config.lclTier6.toString(),
+                    lclTier7: config.lclTier7.toString(),
+                    lclTier8: config.lclTier8.toString(),
+                    lclTier9: config.lclTier9.toString(),
+                    lclTier10: config.lclTier10.toString(),
+                    lclTierDefault: config.lclTierDefault.toString(),
                   })
                   setConfigDialogOpen(true)
                 }}>
@@ -707,65 +791,134 @@ export default function SystemPage() {
 
       {/* 修改配置弹窗 */}
       <Dialog open={configDialogOpen} onOpenChange={setConfigDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>修改系统配置</DialogTitle>
             <DialogDescription>
-              修改费率和运费配置
+              修改费率、FCL/LCL 运费参数
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>管销费率 (%)</Label>
-                <Input
-                  type="number"
-                  value={configFormData.adminFeeRate}
-                  onChange={(e) => setConfigFormData({ ...configFormData, adminFeeRate: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>增值税率 (%)</Label>
-                <Input
-                  type="number"
-                  value={configFormData.vatRate}
-                  onChange={(e) => setConfigFormData({ ...configFormData, vatRate: e.target.value })}
-                />
-              </div>
-            </div>
+          <div className="space-y-6">
             <div className="space-y-2">
-              <Label>汇率 (CNY/USD)</Label>
-              <Input
-                type="number"
-                value={configFormData.exchangeRate}
-                onChange={(e) => setConfigFormData({ ...configFormData, exchangeRate: e.target.value })}
-              />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>FCL 20尺运费</Label>
-                <Input
-                  type="number"
-                  value={configFormData.fcl20Rate}
-                  onChange={(e) => setConfigFormData({ ...configFormData, fcl20Rate: e.target.value })}
-                />
+              <p className="text-sm font-medium">基础费率</p>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">管销费率 (%)</Label>
+                  <Input
+                    type="number"
+                    value={configFormData.adminFeeRate}
+                    onChange={(e) => setConfigFormData({ ...configFormData, adminFeeRate: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">增值税率 (%)</Label>
+                  <Input
+                    type="number"
+                    value={configFormData.vatRate}
+                    onChange={(e) => setConfigFormData({ ...configFormData, vatRate: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">汇率 (CNY/USD)</Label>
+                  <Input
+                    type="number"
+                    value={configFormData.exchangeRate}
+                    onChange={(e) => setConfigFormData({ ...configFormData, exchangeRate: e.target.value })}
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>FCL 40尺运费</Label>
-                <Input
-                  type="number"
-                  value={configFormData.fcl40Rate}
-                  onChange={(e) => setConfigFormData({ ...configFormData, fcl40Rate: e.target.value })}
-                />
-              </div>
             </div>
+
             <div className="space-y-2">
-              <Label>LCL拼箱运费 (/CBM)</Label>
-              <Input
-                type="number"
-                value={configFormData.lclBaseRate}
-                onChange={(e) => setConfigFormData({ ...configFormData, lclBaseRate: e.target.value })}
-              />
+              <p className="text-sm font-medium">FCL 整柜</p>
+              <div className="grid gap-4 sm:grid-cols-4">
+                <div className="space-y-1">
+                  <Label className="text-xs">20尺运费 (USD)</Label>
+                  <Input
+                    type="number"
+                    value={configFormData.fcl20Rate}
+                    onChange={(e) => setConfigFormData({ ...configFormData, fcl20Rate: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">20尺容积 (cuft)</Label>
+                  <Input
+                    type="number"
+                    value={configFormData.fcl20Volume}
+                    onChange={(e) => setConfigFormData({ ...configFormData, fcl20Volume: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">40尺运费 (USD)</Label>
+                  <Input
+                    type="number"
+                    value={configFormData.fcl40Rate}
+                    onChange={(e) => setConfigFormData({ ...configFormData, fcl40Rate: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">40尺容积 (cuft)</Label>
+                  <Input
+                    type="number"
+                    value={configFormData.fcl40Volume}
+                    onChange={(e) => setConfigFormData({ ...configFormData, fcl40Volume: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-sm font-medium">LCL 拼箱固定费用 (CNY)</p>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">操作费</Label>
+                  <Input
+                    type="number"
+                    value={configFormData.lclHandlingFee}
+                    onChange={(e) => setConfigFormData({ ...configFormData, lclHandlingFee: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">文件费</Label>
+                  <Input
+                    type="number"
+                    value={configFormData.lclDocumentFee}
+                    onChange={(e) => setConfigFormData({ ...configFormData, lclDocumentFee: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">拼箱费/CBM</Label>
+                  <Input
+                    type="number"
+                    value={configFormData.lclUnitFee}
+                    onChange={(e) => setConfigFormData({ ...configFormData, lclUnitFee: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-sm font-medium">LCL CBM 档位基础运费 (USD/CBM)</p>
+              <div className="grid gap-3 grid-cols-4">
+                {Array.from({ length: 10 }, (_, i) => i + 1).map((tier) => (
+                  <div key={tier} className="space-y-1">
+                    <Label className="text-xs">{tier} CBM</Label>
+                    <Input
+                      type="number"
+                      value={configFormData[`lclTier${tier}` as keyof typeof configFormData]}
+                      onChange={(e) => setConfigFormData({ ...configFormData, [`lclTier${tier}`]: e.target.value })}
+                    />
+                  </div>
+                ))}
+                <div className="space-y-1">
+                  <Label className="text-xs">&gt;10 CBM</Label>
+                  <Input
+                    type="number"
+                    value={configFormData.lclTierDefault}
+                    onChange={(e) => setConfigFormData({ ...configFormData, lclTierDefault: e.target.value })}
+                  />
+                </div>
+              </div>
             </div>
           </div>
           <DialogFooter>

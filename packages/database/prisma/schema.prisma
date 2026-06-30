@@ -104,8 +104,9 @@ model Material {
   updatedAt     DateTime @updatedAt @map("updated_at")
 
   // Relations
-  bomMaterials  BomMaterial[]
-  notifications Notification[]
+  bomMaterials       BomMaterial[]
+  packagingMaterials PackagingMaterial[]
+  notifications      Notification[]
 
   @@map("materials")
 }
@@ -163,8 +164,11 @@ model PackagingConfig {
   modelId       String   @map("model_id")
   name          String
   packagingType String   @map("packaging_type")
-  perBox        Int      @map("per_box")     // 每盒数量
-  perCarton     Int      @map("per_carton") // 每箱数量
+  perBox        Int?     @map("per_box")     // 每盒数量，两层类型为 null
+  perCarton     Int      @map("per_carton") // 每箱数量，由 layer 计算得出
+  layer1        Int      @map("layer_1")    // 第一层数量
+  layer2        Int      @map("layer_2")    // 第二层数量
+  layer3        Int?     @map("layer_3")    // 第三层数量，两层类型为 null
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
@@ -204,21 +208,23 @@ enum ProcessUnit {
 
 // ==================== 包材配置 ====================
 model PackagingMaterial {
-  id                 String   @id @default(uuid())
-  packagingConfigId  String   @map("packaging_config_id")
-  name               String
-  quantity           Decimal  @db.Decimal(10, 4)
-  price              Decimal  @db.Decimal(10, 4)
-  boxLength          Decimal? @db.Decimal(10, 2) @map("box_length")
-  boxWidth           Decimal? @db.Decimal(10, 2) @map("box_width")
-  boxHeight          Decimal? @db.Decimal(10, 2) @map("box_height")
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
+  id                String   @id @default(uuid())
+  packagingConfigId String   @map("packaging_config_id")
+  materialId        String   @map("material_id")
+  quantity          Decimal  @db.Decimal(10, 4)
+  boxLength         Decimal? @db.Decimal(10, 2) @map("box_length")
+  boxWidth          Decimal? @db.Decimal(10, 2) @map("box_width")
+  boxHeight         Decimal? @db.Decimal(10, 2) @map("box_height")
+  boxVolume         Decimal? @db.Decimal(10, 4) @map("box_volume") // 单箱材积（cuft）
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   // Relations
-  packagingConfig    PackagingConfig @relation(fields: [packagingConfigId], references: [id], onDelete: Cascade)
+  packagingConfig   PackagingConfig @relation(fields: [packagingConfigId], references: [id], onDelete: Cascade)
+  material          Material        @relation(fields: [materialId], references: [id], onDelete: Restrict)
 
   @@index([packagingConfigId])
+  @@index([materialId])
   @@map("packaging_materials")
 }
 

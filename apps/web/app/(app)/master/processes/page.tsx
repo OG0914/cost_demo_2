@@ -47,6 +47,7 @@ import {
 import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog'
 import { toast } from 'sonner'
 import { usePackagingConfigs, useProcessConfigs } from '@/hooks/api'
+import { PACKAGING_TYPE_META, formatPackagingDescription } from '@/lib/constants'
 
 interface ProcessConfig {
   id: string
@@ -218,8 +219,12 @@ export default function ProcessesPage() {
                 {modelPackagingConfigs.length === 0 ? (
                   <p className="text-sm text-muted-foreground py-2">该型号暂无包装配置</p>
                 ) : (
-                  modelPackagingConfigs.map((config: { id: string; name: string; packagingType?: string }) => {
+                  modelPackagingConfigs.map((config: { id: string; name: string; packagingType?: string; layer1?: number; layer2?: number; layer3?: number | null }) => {
                     const processCount = (processConfigs as ProcessConfig[]).length
+                    const meta = PACKAGING_TYPE_META[config.packagingType as keyof typeof PACKAGING_TYPE_META]
+                    const description = config.layer1 !== undefined && config.layer2 !== undefined
+                      ? formatPackagingDescription(config.packagingType || '', config.layer1, config.layer2, config.layer3)
+                      : ''
                     return (
                       <button
                         key={config.id}
@@ -230,7 +235,8 @@ export default function ProcessesPage() {
                       >
                         <div>
                           <p className="text-sm font-medium">{config.name}</p>
-                          <p className="text-xs text-muted-foreground">{config.packagingType || '-'}</p>
+                          <p className="text-xs text-muted-foreground">{meta?.label ?? config.packagingType}</p>
+                          {description && <p className="text-xs text-muted-foreground">{description}</p>}
                         </div>
                         <span className="text-xs text-muted-foreground">{processCount}道工序</span>
                       </button>

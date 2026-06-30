@@ -1,3 +1,9 @@
+import {
+  STANDARD_BOX,
+  BLISTER_BAG,
+  calculatePerBox,
+  calculatePerCarton,
+} from '@cost/shared-types'
 import { BaseService } from './base.service.js'
 import { packagingRepository, type PackagingConfigFilter, type PaginationParams } from '../repositories/packaging.repository.js'
 
@@ -5,15 +11,17 @@ export interface CreatePackagingConfigInput {
   modelId: string
   name: string
   packagingType: string
-  perBox: number
-  perCarton: number
+  layer1: number
+  layer2: number
+  layer3?: number | null
 }
 
 export interface UpdatePackagingConfigInput {
   name?: string
   packagingType?: string
-  perBox?: number
-  perCarton?: number
+  layer1?: number
+  layer2?: number
+  layer3?: number | null
 }
 
 export interface CreateProcessInput {
@@ -33,21 +41,21 @@ export interface UpdateProcessInput {
 
 export interface CreatePackagingMaterialInput {
   packagingConfigId: string
-  name: string
+  materialId: string
   quantity: number
-  price: number
   boxLength?: number
   boxWidth?: number
   boxHeight?: number
+  boxVolume?: number
 }
 
 export interface UpdatePackagingMaterialInput {
-  name?: string
+  materialId?: string
   quantity?: number
-  price?: number
   boxLength?: number
   boxWidth?: number
   boxHeight?: number
+  boxVolume?: number
 }
 
 export class PackagingService extends BaseService {
@@ -83,12 +91,19 @@ export class PackagingService extends BaseService {
       throw new Error('INVALID_MODEL')
     }
 
+    const isThreeLayer = input.packagingType === STANDARD_BOX || input.packagingType === BLISTER_BAG
+    const perBox = isThreeLayer ? calculatePerBox(input.packagingType, input.layer1, input.layer2) : null
+    const perCarton = calculatePerCarton(input.layer1, input.layer2, input.layer3)
+
     return this.repository.create({
       model: { connect: { id: input.modelId } },
       name: input.name,
       packagingType: input.packagingType,
-      perBox: input.perBox,
-      perCarton: input.perCarton,
+      perBox,
+      perCarton,
+      layer1: input.layer1,
+      layer2: input.layer2,
+      layer3: input.layer3 ?? null,
     })
   }
 
@@ -98,11 +113,23 @@ export class PackagingService extends BaseService {
       throw new Error('NOT_FOUND')
     }
 
+    const packagingType = input.packagingType ?? existing.packagingType
+    const layer1 = input.layer1 ?? existing.layer1
+    const layer2 = input.layer2 ?? existing.layer2
+    const layer3 = input.layer3 !== undefined ? input.layer3 : existing.layer3
+
+    const isThreeLayer = packagingType === STANDARD_BOX || packagingType === BLISTER_BAG
+    const perBox = isThreeLayer ? calculatePerBox(packagingType, layer1, layer2) : null
+    const perCarton = calculatePerCarton(layer1, layer2, layer3)
+
     return this.repository.update(id, {
       name: input.name,
       packagingType: input.packagingType,
-      perBox: input.perBox,
-      perCarton: input.perCarton,
+      perBox,
+      perCarton,
+      layer1: input.layer1,
+      layer2: input.layer2,
+      layer3: input.layer3 !== undefined ? input.layer3 : undefined,
     })
   }
 
@@ -180,14 +207,21 @@ export class PackagingService extends BaseService {
       throw new Error('INVALID_CONFIG')
     }
 
+    const material = await this.prisma.material.findUnique({
+      where: { id: input.materialId },
+    })
+    if (!material) {
+      throw new Error('INVALID_MATERIAL')
+    }
+
     return this.repository.createMaterial({
       packagingConfig: { connect: { id: input.packagingConfigId } },
-      name: input.name,
+      material: { connect: { id: input.materialId } },
       quantity: input.quantity,
-      price: input.price,
       boxLength: input.boxLength,
       boxWidth: input.boxWidth,
       boxHeight: input.boxHeight,
+      boxVolume: input.boxVolume,
     })
   }
 
@@ -197,13 +231,22 @@ export class PackagingService extends BaseService {
       throw new Error('NOT_FOUND')
     }
 
+    if (input.materialId) {
+      const material = await this.prisma.material.findUnique({
+        where: { id: input.materialId },
+      })
+      if (!material) {
+        throw new Error('INVALID_MATERIAL')
+      }
+    }
+
     return this.repository.updateMaterial(id, {
-      name: input.name,
+      material: input.materialId ? { connect: { id: input.materialId } } : undefined,
       quantity: input.quantity,
-      price: input.price,
       boxLength: input.boxLength,
       boxWidth: input.boxWidth,
       boxHeight: input.boxHeight,
+      boxVolume: input.boxVolume,
     })
   }
 

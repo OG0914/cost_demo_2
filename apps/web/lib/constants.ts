@@ -133,17 +133,20 @@ export const PRODUCT_CATEGORY = {
 
 // ==================== 包装类型 ====================
 
-export const PACKAGING_TYPE = {
-  SINGLE: '单件',
-  BULK: '散装',
-  BOX: '盒装',
-} as const
-
-export const PACKAGING_TYPE_LABEL: Record<string, string> = {
-  [PACKAGING_TYPE.SINGLE]: '单件装',
-  [PACKAGING_TYPE.BULK]: '散装',
-  [PACKAGING_TYPE.BOX]: '盒装',
-} as const
+export {
+  STANDARD_BOX,
+  NO_BOX,
+  BLISTER_DIRECT,
+  BLISTER_BAG,
+  PACKAGING_TYPES,
+  PACKAGING_TYPE_META,
+  type PackagingType,
+  getPackagingTypeLabel,
+  isThreeLayerType,
+  calculatePerBox,
+  calculatePerCarton,
+  formatPackagingDescription,
+} from '@cost/shared-types'
 
 // ==================== 工序单位 ====================
 

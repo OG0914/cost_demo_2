@@ -1,9 +1,9 @@
 # Handoff 文档
 
-> **最后更新**: 2026-06-23
+> **最后更新**: 2026-06-29
 > **交接人**: 八月团队 (Claude 4.6)
 > **项目**: cost_demo_2 - 成本核算管理系统 v2
-> **状态**: ✅ Phase 1 本地验证通过；4项审核返修已完成；资料模块增删改已接真实 API；system 页面已迁移；用户删除关联检查已上线；删除确认弹窗已统一；种子数据已改为 UUID；API 服务运行中
+> **状态**: ✅ 产品系列/分类系统配置化、响应工具函数合并、旧路由 Zod 验证、BOM 复制已提交；Task 3（包材关联原料）代码已实现但 ⚠️ 未合并到 main，仅存在于 stash/worktree 中
 
 ---
 
@@ -12,6 +12,7 @@
 ```
 Phase 1 代码:  ✅ 完成
 Phase 1 本地验证: ✅ 完成 (API 测试 114/114 通过)
+Phase 2 基线提交: ✅ 完成 (d763e6f)
 4项审核返修:  ✅ 完成
 资料模块增删改: ✅ 已接真实 API + 删除提示增强
 system 页面:    ✅ 已迁移到真实 API
@@ -19,12 +20,73 @@ system 页面:    ✅ 已迁移到真实 API
 删除确认弹窗:   ✅ 8 个页面统一为 ConfirmDeleteDialog 组件
 种子数据 UUID:  ✅ 所有实体 ID 已改为 UUID 格式
 删除成功提示:   ✅ 已显示具体项目名称
+响应工具函数合并: ✅ 已统一为 lib/response-helpers.ts
+旧路由 Zod 验证: ✅ 已补充 schema 并替换 request.body as 断言
+包材关联原料:  ⚠️ 代码在 stash/worktree 中，未合并到 main
+BOM 复制功能:   ✅ 已接真实 API（`POST /api/v1/bom/copy`）
+登录页自动刷新: ✅ 已修复（切换 webpack 后稳定）
 后端服务:      ✅ 运行中 (http://localhost:3000)
-前端服务:      ⚠️ 当前未运行
-API对接:       ✅ 14个页面查询已迁移；customers/materials/models/regulations 增删改已接 API
-数据迁移:      ✅ 29条quotations记录已导入
+前端服务:      ✅ 运行中 (http://localhost:5174，webpack 模式)
+数据迁移:      ⚠️ 重新 seed 后真实数据已清空，需重新迁移
 本地 PostgreSQL: ✅ Docker 容器运行中
 ```
+
+### 当前重点任务（2026-06-29）
+
+| 任务 | 状态 | 说明 |
+|------|------|------|
+| **Task 1: 产品系列/分类改为系统配置维护** | ✅ 已提交 (`9298246`) | `system/page.tsx` 已引入 `ModelDictionaryConfig`，`models/page.tsx` 已读取 SystemConfig |
+| **Task 2: BOM 复制功能完整实现** | ✅ 已完成 | 前端 `bom/page.tsx` 已调用真实 `POST /api/v1/bom/copy`；后端 copy 端点与 service 测试已存在并验证通过 |
+| **Task 3: 包材关联原料** | ⚠️ 代码已实现但未合并到 main | 代码当前存在于 `stash@{0}` 和 `.claude/worktrees/task3-packaging-material/` 中，尚未进入 main 分支；需选择处置方案后合并 |
+
+---
+
+## ⚠️ 重要状态纠正：Task 3（包材关联原料）
+
+> **此前 `tasks/todo.md` 与本文件将 Task 3 标记为「已完成」，经 ZCODE 全面彻查后发现该记录不准确。**
+
+### 真实状态
+
+- **主分支 `main` 上无 Task 3 代码**：`packages/database/prisma/schema.prisma` 中的 `PackagingMaterial` 仍保留 `name` / `price` 字段，无 `materialId`，无 `Material` 关联
+- **代码实际存放位置**：
+  - `stash@{0}`（基于旧提交 `086b51c`）：14 个文件，354 行变更，包含完整前后端改造
+  - `.claude/worktrees/task3-packaging-material/`：在 stash 基础上又新增了 `boxVolume` 字段、迁移文件、`searchable-select.tsx` 组件、新计划文件等
+- **worktree 分支状态**：`worktree-task3-packaging-material` 实际指向 `9298246`（与 main 一致），无独有提交
+
+### 风险
+
+- 文档与代码状态不一致，可能导致后续排期/验收误判
+- stash 中的代码可能被 `git stash clear` 误删
+- worktree 与 main 状态冲突，占用磁盘空间
+
+### 待 Lucas 决策
+
+请选择 Task 3 代码的处置方案：
+
+- **方案 A**：从 `stash@{0}` + worktree 目录中恢复代码到 main，补全/回归测试后提交
+- **方案 B**：废弃现有 worktree/stash 代码，按 `docs/plans/2026-06-25-task3-packaging-material-plan.md` 重新实施
+
+### 2026-06-24 新增工作（三项 Bug 修复）
+
+**计划文件**: `docs/plans/2026-06-24-bug-fixes-plan.md`
+
+| 问题 | 选定方案 | 状态 | 关键文件 |
+|------|---------|------|---------|
+| 1. 产品系列硬编码 | A（系列+分类均改为 SystemConfig 维护） | ✅ 已提交 (`9298246`) | `apps/web/app/(app)/system/page.tsx`、`apps/web/app/(app)/master/models/page.tsx`、`apps/web/components/system/model-dictionary-config.tsx`、`apps/web/components/system/model-dictionary-card.tsx` |
+| 2. BOM 复制假成功 | B（完整实现后端 copy API + 前端调用） | ✅ 已完成 | `apps/web/hooks/api/use-bom.ts`、`apps/web/app/(app)/master/bom/page.tsx`；后端 copy 端点与测试已存在 |
+| 3. 包材手动输入名称 | A（PackagingMaterial 完全关联 Material 表） | ⚠️ 代码已实现但未合并到 main | `packages/database/prisma/schema.prisma`、共享类型、backend service/repository/controller/tests、frontend hook/page（当前仅在 stash/worktree 中，未提交） |
+
+**Task 1 已完成的代码变更**:
+- 新建 `apps/web/components/system/model-dictionary-card.tsx` — 可复用的字典维护卡片（增/删/输入）
+- 新建 `apps/web/components/system/model-dictionary-config.tsx` — 加载并保存 `modelSeries` / `modelCategories` 两个 SystemConfig
+- 修改 `apps/web/app/(app)/system/page.tsx` — 在「系统配置」Tab 引入 `ModelDictionaryConfig`，避免继续膨胀
+- 修改 `apps/web/app/(app)/master/models/page.tsx` — 移除硬编码 `categories`/`series` 数组，改为 `useSystemConfig` 读取配置并回退到默认值
+
+**Task 3 方案 A 关键决策**（已写入计划文件）：
+- `PackagingMaterial` 新增必填 `materialId`，移除 `name` / `price` 字段
+- `name`、`price` 运行时从 `Material` 表读取
+- 开发阶段旧 `packaging_materials` 数据直接丢弃（迁移脚本先 `TRUNCATE`）
+- 所有提交需经 Lucas 明确确认
 
 ### 数据库状态
 
@@ -45,7 +107,7 @@ API对接:       ✅ 14个页面查询已迁移；customers/materials/models/reg
 | bom_materials | ✅ | 10 | 种子 BOM |
 | packaging_configs | ✅ | 5 | 种子包装配置 |
 | process_configs | ✅ | 8 | 种子工序配置 |
-| packaging_materials | ✅ | 8 | 种子包材配置 |
+| packaging_materials | ✅ | 0 | Task 3 迁移已应用：移除 `name`/`price`，新增 `material_id` 外键；原种子数据已清空，需通过 UI 重新维护 |
 | system_config | ✅ | 6 | 种子系统配置 |
 | quotations | ⚠️ | 0 | **重新 seed 清空了此前迁移的 29 条报价单数据** |
 | standard_costs | ⚠️ | 0 | 已清空 |
@@ -386,41 +448,53 @@ cd apps/api && pnpm test
 
 ## 下一步任务
 
-### 🔴 高优先级（数据恢复 + 最终验证）
+### 🔴 当前焦点：Task 2 BOM 复制功能完整实现
 
-1. **恢复迁移的真实业务数据** (30分钟)
-   - 重新运行 `scripts/migrate-data.ts`、`scripts/migrate-quotations.ts` 等迁移脚本
-   - 注意：当前种子用户 ID 为随机 UUID，与迁移脚本生成的确定性 UUID 不同，需确认 `createdBy`/`updatedBy` 映射策略
-   - 或接受演示环境仅使用种子数据
+**计划文件**: `docs/plans/2026-06-24-bug-fixes-plan.md`
 
-2. **浏览器最终验证** (30分钟)
-   - 登录后访问 `/system`，确认系统配置从真实 API 加载
-   - 访问 `/master/users`，尝试删除 admin，确认弹出 409 冲突提示
-   - 访问各 master 页面，确认删除确认弹窗按钮样式统一
+1. **Task 1: 产品系列/分类改为系统配置维护** ✅ 已完成（`9298246`）
+   - 已新建 `ModelDictionaryConfig` / `ModelDictionaryCard` 组件
+   - `system/page.tsx` 已引入配置维护卡片
+   - `models/page.tsx` 已移除硬编码，改为读取 SystemConfig
+
+2. **Task 2: BOM 复制功能完整实现** 🚧 进行中
+   - 方案 B：完整实现后端 copy API + 前端调用
+   - 当前状态：前端 `bom/page.tsx` 复制弹窗 UI 已存在，但 `handleCopyBom` 仅显示本地 `toast.success('BOM已复制')`，未调用真实 API；后端 `apps/api/src/services/bom.service.ts` 与 `apps/api/src/routes/bom.routes.ts` 尚未提供 copy 端点
+   - **关键文件**: `packages/shared-types/src/api.ts`、`apps/api/src/services/bom.service.ts`、`apps/api/src/routes/bom.routes.ts`、`apps/web/lib/api.ts`、`apps/web/hooks/api/use-bom.ts`、`apps/web/app/(app)/master/bom/page.tsx`
+
+3. **Task 3: 包材关联原料并改为选择/搜索** ⚠️ 代码已实现但未合并到 main
+   - 方案 A：`PackagingMaterial` 完全关联 `Material` 表
+   - 关键决策: `materialId` 必填；`name`/`price` 运行时从 Material 取；旧数据已丢弃
+   - **当前状态**：代码位于 `stash@{0}`（基于 `086b51c`）和 `.claude/worktrees/task3-packaging-material/` 中，尚未经过 commit、review、合并流程，不能视为已交付
+   - **下一步**：需 Lucas 确认处置方案（恢复并合并 / 废弃重作）
 
 ### 🟡 中优先级（代码整洁度）
 
-3. **合并两套响应工具函数** (30分钟)
-   - 统一使用 `lib/response-helpers.ts`
-   - 删除 `utils/http-response.ts`
-
-4. **为旧路由补充Zod验证** (2小时)
-   - models/bom/regulations/standard-costs 添加schema定义
-   - 替换所有 `request.body as` 为Zod解析
-
-5. **拆分臃肿页面组件** (3小时)
-   - system/page.tsx (646行) → 拆分为子组件
+4. **拆分臃肿页面组件** (3小时)
+   - system/page.tsx → 已部分拆分（ModelDictionaryConfig），可继续拆分剩余部分
    - cost/new/page.tsx (632行) → 拆分为步骤子组件
 
 ### 🟢 低优先级（重构旧架构）
 
-6. **将7个旧路由重构为分层架构** (8小时)
+5. **将7个旧路由重构为分层架构** (8小时)
    - 提取Controller/Service/Repository
    - 统一错误处理和响应格式
 
-7. **完善类型安全** (4小时)
+6. **完善类型安全** (4小时)
    - 替换API层的 `unknown[]` 为具体类型
    - 同步 `shared-types` 与 Prisma 类型
+
+### ✅ 已完成（2026-06-25 前后）
+
+- **合并两套响应工具函数** (`e394b7c`)：统一使用 `lib/response-helpers.ts`，删除 `utils/http-response.ts`
+- **为旧路由补充 Zod 验证** (`4da1e58`)：models/bom/regulations/standard-costs 等旧路由添加 schema 定义，替换 `request.body as` 类型断言
+- **包材关联原料并改为选择/搜索（Task 3）** — 代码已实现，但 ⚠️ 未合并到 main，仍存放在 `stash@{0}` 与 worktree 中
+
+### ✅ 已完成（2026-06-24）
+
+- 产品系列/分类改为系统配置维护（Task 1）已提交
+- 三项 Bug 修复方案确认并写入计划文件
+- `docs/plans/2026-06-24-bug-fixes-plan.md` 已置于项目目录
 
 ### ✅ 已完成（2026-06-23）
 
@@ -431,6 +505,7 @@ cd apps/api && pnpm test
 - 统一删除确认弹窗组件并覆盖 8 个页面
 - `apps/web/lib/data.ts` 迁移残留已删除
 - 种子数据全部使用 UUID
+- Phase 2 基线已提交（d763e6f）
 - API 服务已重启并验证通过
 
 ### ✅ 已完成（2026-06-22）
@@ -514,6 +589,13 @@ cd apps/api && pnpm test
 
 ### 最近修改（未提交）
 
+**2026-06-24 三项 Bug 修复 — Task 1（产品系列/分类系统配置化）**:
+- `apps/web/components/system/model-dictionary-card.tsx` — 新建可复用字典维护卡片
+- `apps/web/components/system/model-dictionary-config.tsx` — 新建型号字典配置组件
+- `apps/web/app/(app)/system/page.tsx` — 引入 `ModelDictionaryConfig`，维护系列/分类
+- `apps/web/app/(app)/master/models/page.tsx` — 移除硬编码，改为读取 `modelSeries` / `modelCategories` SystemConfig
+
+**2026-06-23 Phase 2 基线前未提交改动（已纳入 d763e6f 之后的工作区，待 Task 1 一起提交）**:
 - `apps/web/lib/api.ts` — `createCrudApi` 默认 `ListType = T[]`，统一列表返回类型
 - `apps/web/hooks/api/use-users.ts` — 移除强转，补全 mutations
 - `apps/web/hooks/api/use-system-config.ts` — 移除 `as unknown` 强转
@@ -532,9 +614,21 @@ cd apps/api && pnpm test
 - `packages/database/prisma/seed.ts` — 所有实体 ID 改为 UUID 格式
 - `apps/web/lib/data.ts` — 已删除
 
+**新增计划文件**:
+- `docs/plans/2026-06-24-bug-fixes-plan.md` — Task 2/3 详细实施计划
+
 ### 最近提交
 
 ```
+commit 9298246
+@ feat(web): 产品系列与分类改为系统配置维护
+
+commit 4da1e58
+@ feat(api): 为旧路由补充 Zod 验证
+
+commit e394b7c
+@ refactor(api): 合并两套响应工具函数
+
 commit d763e6f
 @ docs: 更新 HANDOFF.md 与架构修复计划
 

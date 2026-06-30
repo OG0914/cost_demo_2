@@ -114,6 +114,29 @@ export const updateMaterialSchema = z.object({
 export type CreateMaterialInput = z.infer<typeof createMaterialSchema>
 export type UpdateMaterialInput = z.infer<typeof updateMaterialSchema>
 
+// ==================== Packaging Material Schemas ====================
+
+export const createPackagingMaterialSchema = z.object({
+  materialId: idSchema,
+  quantity: positiveDecimalSchema,
+  boxLength: positiveDecimalSchema.optional(),
+  boxWidth: positiveDecimalSchema.optional(),
+  boxHeight: positiveDecimalSchema.optional(),
+  boxVolume: positiveDecimalSchema.optional(),
+})
+
+export const updatePackagingMaterialSchema = z.object({
+  materialId: idSchema.optional(),
+  quantity: positiveDecimalSchema.optional(),
+  boxLength: positiveDecimalSchema.optional(),
+  boxWidth: positiveDecimalSchema.optional(),
+  boxHeight: positiveDecimalSchema.optional(),
+  boxVolume: positiveDecimalSchema.optional(),
+})
+
+export type CreatePackagingMaterialInput = z.infer<typeof createPackagingMaterialSchema>
+export type UpdatePackagingMaterialInput = z.infer<typeof updatePackagingMaterialSchema>
+
 // ==================== Quotation Schemas ====================
 
 export const saleTypeSchema = z.enum(['domestic', 'export'])
@@ -171,9 +194,12 @@ export type CalculateQuotationInput = z.infer<typeof calculateQuotationSchema>
 export const createPackagingConfigSchema = z.object({
   modelId: z.string().uuid('型号ID格式不正确'),
   name: z.string().min(1, '名称不能为空').max(100, '名称最多100字符'),
-  packagingType: z.string().min(1, '包装类型不能为空').max(50, '包装类型最多50字符'),
-  perBox: z.number().int().nonnegative('每盒数量必须为非负整数'),
-  perCarton: z.number().int().nonnegative('每箱数量必须为非负整数'),
+  packagingType: z.enum(['standard_box', 'no_box', 'blister_direct', 'blister_bag'], {
+    message: '包装类型必须是 standard_box、no_box、blister_direct 或 blister_bag',
+  }),
+  layer1: z.number().int().positive('layer1 必须为正整数'),
+  layer2: z.number().int().positive('layer2 必须为正整数'),
+  layer3: z.number().int().positive('layer3 必须为正整数').optional(),
 })
 
 export const updatePackagingConfigSchema = createPackagingConfigSchema
@@ -198,22 +224,6 @@ export const updateProcessConfigSchema = createProcessConfigSchema.partial()
 
 export type CreateProcessConfigInput = z.infer<typeof createProcessConfigSchema>
 export type UpdateProcessConfigInput = z.infer<typeof updateProcessConfigSchema>
-
-// ==================== PackagingMaterial Schemas ====================
-
-export const createPackagingMaterialSchema = z.object({
-  name: z.string().min(1, '包材名称不能为空').max(100, '包材名称最多100字符'),
-  quantity: z.number().nonnegative('数量不能为负数'),
-  price: z.number().nonnegative('单价不能为负数'),
-  boxLength: z.number().nonnegative('长度不能为负数').optional(),
-  boxWidth: z.number().nonnegative('宽度不能为负数').optional(),
-  boxHeight: z.number().nonnegative('高度不能为负数').optional(),
-})
-
-export const updatePackagingMaterialSchema = createPackagingMaterialSchema.partial()
-
-export type CreatePackagingMaterialInput = z.infer<typeof createPackagingMaterialSchema>
-export type UpdatePackagingMaterialInput = z.infer<typeof updatePackagingMaterialSchema>
 
 // ==================== BomMaterial Schemas ====================
 

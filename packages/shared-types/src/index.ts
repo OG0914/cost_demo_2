@@ -1,4 +1,5 @@
 export * from './api.js'
+export * from './packaging.js'
 
 // ==================== 基础实体类型 ====================
 
@@ -53,6 +54,8 @@ export interface Model {
   category?: string
   series?: string
   imageUrl?: string
+  bomCount?: number
+  packagingConfigCount?: number
   createdAt: string
   updatedAt?: string
 }

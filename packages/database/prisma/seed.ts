@@ -3,6 +3,24 @@ import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
+// 标准包装类型常量（seed 不依赖构建后的 shared-types，直接内联）
+const STANDARD_BOX = 'standard_box'
+const NO_BOX = 'no_box'
+const BLISTER_DIRECT = 'blister_direct'
+const BLISTER_BAG = 'blister_bag'
+
+function isThreeLayerType(type: string): boolean {
+  return type === STANDARD_BOX || type === BLISTER_BAG
+}
+
+function calculatePerBox(type: string, layer1: number, layer2: number): number | null {
+  return isThreeLayerType(type) ? layer1 * layer2 : null
+}
+
+function calculatePerCarton(layer1: number, layer2: number, layer3?: number | null): number {
+  return layer1 * layer2 * (layer3 ?? 1)
+}
+
 // 用户 ID
 const USER_ADMIN_ID = 'b045a025-da3e-4391-9f78-eb517d1ade27'
 const USER_PURCHASER_ID = '9292aebd-eeb4-48ec-9e7f-0996da24b91e'
@@ -220,11 +238,59 @@ async function main() {
   // 创建包装配置
   const packagingConfigs = await prisma.packagingConfig.createMany({
     data: [
-      { id: PACKAGING_STANDARD_SINGLE_ID, modelId: MODEL_D700_ID, name: '标准单件装', packagingType: '单件', perBox: 50, perCarton: 200 },
-      { id: PACKAGING_BULK_50_ID, modelId: MODEL_D700_ID, name: '散装50只/盒', packagingType: '散装', perBox: 50, perCarton: 500 },
-      { id: PACKAGING_D800_STANDARD_ID, modelId: MODEL_D800_ID, name: '标准单件装', packagingType: '单件', perBox: 40, perCarton: 160 },
-      { id: PACKAGING_P100_50_ID, modelId: MODEL_P100_ID, name: '50只/盒', packagingType: '盒装', perBox: 50, perCarton: 1000 },
-      { id: PACKAGING_N95_20_ID, modelId: MODEL_N95_ID, name: '20只/盒', packagingType: '盒装', perBox: 20, perCarton: 400 },
+      {
+        id: PACKAGING_STANDARD_SINGLE_ID,
+        modelId: MODEL_D700_ID,
+        name: 'D-700 标准彩盒',
+        packagingType: STANDARD_BOX,
+        layer1: 1,
+        layer2: 50,
+        layer3: 4,
+        perBox: calculatePerBox(STANDARD_BOX, 1, 50),
+        perCarton: calculatePerCarton(1, 50, 4),
+      },
+      {
+        id: PACKAGING_BULK_50_ID,
+        modelId: MODEL_D700_ID,
+        name: 'D-700 无彩盒散装',
+        packagingType: NO_BOX,
+        layer1: 1,
+        layer2: 500,
+        perBox: calculatePerBox(NO_BOX, 1, 500),
+        perCarton: calculatePerCarton(1, 500),
+      },
+      {
+        id: PACKAGING_D800_STANDARD_ID,
+        modelId: MODEL_D800_ID,
+        name: 'D-800 标准彩盒',
+        packagingType: STANDARD_BOX,
+        layer1: 1,
+        layer2: 40,
+        layer3: 4,
+        perBox: calculatePerBox(STANDARD_BOX, 1, 40),
+        perCarton: calculatePerCarton(1, 40, 4),
+      },
+      {
+        id: PACKAGING_P100_50_ID,
+        modelId: MODEL_P100_ID,
+        name: 'P-100 泡壳袋装',
+        packagingType: BLISTER_BAG,
+        layer1: 5,
+        layer2: 2,
+        layer3: 50,
+        perBox: calculatePerBox(BLISTER_BAG, 5, 2),
+        perCarton: calculatePerCarton(5, 2, 50),
+      },
+      {
+        id: PACKAGING_N95_20_ID,
+        modelId: MODEL_N95_ID,
+        name: 'N-95 泡壳直装',
+        packagingType: BLISTER_DIRECT,
+        layer1: 1,
+        layer2: 400,
+        perBox: calculatePerBox(BLISTER_DIRECT, 1, 400),
+        perCarton: calculatePerCarton(1, 400),
+      },
     ],
   })
 
@@ -246,17 +312,65 @@ async function main() {
 
   console.log('已创建工序配置:', processConfigs.count)
 
-  // 创建包材配置
+  // 创建包材配置（按 Task 3 schema，materialId 必填）
   const packagingMaterials = await prisma.packagingMaterial.createMany({
     data: [
-      { id: PACKAGING_MATERIAL_PE_BAG_ID, packagingConfigId: PACKAGING_STANDARD_SINGLE_ID, name: 'PE袋', quantity: 1, price: 0.08 },
-      { id: PACKAGING_MATERIAL_MANUAL_ID, packagingConfigId: PACKAGING_STANDARD_SINGLE_ID, name: '说明书', quantity: 1, price: 0.05 },
-      { id: PACKAGING_MATERIAL_SMALL_BOX_ID, packagingConfigId: PACKAGING_STANDARD_SINGLE_ID, name: '小盒', quantity: 1, price: 0.35 },
-      { id: PACKAGING_MATERIAL_OUTER_BOX_1_ID, packagingConfigId: PACKAGING_STANDARD_SINGLE_ID, name: '外箱', quantity: 0.02, price: 3.5, boxLength: 60, boxWidth: 40, boxHeight: 35 },
-      { id: PACKAGING_MATERIAL_INNER_BAG_ID, packagingConfigId: PACKAGING_BULK_50_ID, name: '内袋', quantity: 1, price: 0.03 },
-      { id: PACKAGING_MATERIAL_OUTER_BOX_2_ID, packagingConfigId: PACKAGING_BULK_50_ID, name: '外箱', quantity: 0.002, price: 4.2, boxLength: 70, boxWidth: 50, boxHeight: 40 },
-      { id: PACKAGING_MATERIAL_INNER_BOX_ID, packagingConfigId: PACKAGING_P100_50_ID, name: '内盒', quantity: 1, price: 0.12 },
-      { id: PACKAGING_MATERIAL_OUTER_BOX_3_ID, packagingConfigId: PACKAGING_P100_50_ID, name: '外箱', quantity: 0.05, price: 2.8, boxLength: 50, boxWidth: 35, boxHeight: 30 },
+      {
+        id: PACKAGING_MATERIAL_PE_BAG_ID,
+        packagingConfigId: PACKAGING_STANDARD_SINGLE_ID,
+        materialId: MATERIAL_VALVE_ID,
+        quantity: 1,
+        boxVolume: 0.25,
+      },
+      {
+        id: PACKAGING_MATERIAL_MANUAL_ID,
+        packagingConfigId: PACKAGING_STANDARD_SINGLE_ID,
+        materialId: MATERIAL_HEADBAND_ID,
+        quantity: 1,
+        boxVolume: 0.15,
+      },
+      {
+        id: PACKAGING_MATERIAL_SMALL_BOX_ID,
+        packagingConfigId: PACKAGING_STANDARD_SINGLE_ID,
+        materialId: MATERIAL_GASKET_ID,
+        quantity: 2,
+        boxVolume: 0.35,
+      },
+      {
+        id: PACKAGING_MATERIAL_OUTER_BOX_1_ID,
+        packagingConfigId: PACKAGING_BULK_50_ID,
+        materialId: MATERIAL_FILTER_CARTRIDGE_ID,
+        quantity: 2,
+        boxVolume: 0.5,
+      },
+      {
+        id: PACKAGING_MATERIAL_INNER_BAG_ID,
+        packagingConfigId: PACKAGING_P100_50_ID,
+        materialId: MATERIAL_FILTER_COTTON_ID,
+        quantity: 0.05,
+        boxVolume: 0.08,
+      },
+      {
+        id: PACKAGING_MATERIAL_OUTER_BOX_2_ID,
+        packagingConfigId: PACKAGING_P100_50_ID,
+        materialId: MATERIAL_NOSE_CLIP_ID,
+        quantity: 0.1,
+        boxVolume: 0.12,
+      },
+      {
+        id: PACKAGING_MATERIAL_INNER_BOX_ID,
+        packagingConfigId: PACKAGING_N95_20_ID,
+        materialId: MATERIAL_EAR_LOOP_ID,
+        quantity: 0.2,
+        boxVolume: 0.1,
+      },
+      {
+        id: PACKAGING_MATERIAL_OUTER_BOX_3_ID,
+        packagingConfigId: PACKAGING_N95_20_ID,
+        materialId: MATERIAL_FILTER_COTTON_ID,
+        quantity: 0.05,
+        boxVolume: 0.18,
+      },
     ],
   })
 
@@ -268,9 +382,29 @@ async function main() {
       { key: 'adminFeeRate', value: 0.1 },
       { key: 'vatRate', value: 0.13 },
       { key: 'exchangeRate', value: 7.2 },
+      // FCL 柜型运费（USD/柜）
       { key: 'fcl20Rate', value: 3500 },
       { key: 'fcl40Rate', value: 5800 },
-      { key: 'lclBaseRate', value: 45 },
+      // FCL 柜型容积（cuft）
+      { key: 'fcl20Volume', value: 950 },
+      { key: 'fcl40Volume', value: 1950 },
+      // LCL 固定费用（CNY）
+      { key: 'lclHandlingFee', value: 500 },
+      { key: 'lclDocumentFee', value: 500 },
+      { key: 'lclUnitFee', value: 170 },
+      // LCL CBM 档位基础运费（USD/CBM），Lucas 可在 system 页调整
+      { key: 'lclTier1', value: 80 },
+      { key: 'lclTier2', value: 140 },
+      { key: 'lclTier3', value: 200 },
+      { key: 'lclTier4', value: 260 },
+      { key: 'lclTier5', value: 320 },
+      { key: 'lclTier6', value: 380 },
+      { key: 'lclTier7', value: 440 },
+      { key: 'lclTier8', value: 500 },
+      { key: 'lclTier9', value: 560 },
+      { key: 'lclTier10', value: 620 },
+      // 超出 10 CBM 的默认费率
+      { key: 'lclTierDefault', value: 680 },
     ],
   })
 

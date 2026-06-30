@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { packagingController } from '../controllers/packaging.controller.js'
 import {
   packagingConfigSchema,
+  materialSchema,
   errorResponseSchema,
   paginatedMetaSchema,
   uuidParamSchema,
@@ -18,13 +19,14 @@ const packagingQuerySchema = {
 
 const createPackagingRequestSchema = {
   type: 'object',
-  required: ['modelId', 'name', 'packagingType', 'perBox', 'perCarton'],
+  required: ['modelId', 'name', 'packagingType', 'layer1', 'layer2'],
   properties: {
     modelId: { type: 'string', format: 'uuid', description: '型号ID' },
     name: { type: 'string', description: '配置名称' },
-    packagingType: { type: 'string', description: '包装类型' },
-    perBox: { type: 'integer', minimum: 1, description: '每箱数量' },
-    perCarton: { type: 'integer', minimum: 1, description: '每 carton 数量' },
+    packagingType: { type: 'string', enum: ['standard_box', 'no_box', 'blister_direct', 'blister_bag'], description: '包装类型' },
+    layer1: { type: 'integer', minimum: 1, description: '第一层数量' },
+    layer2: { type: 'integer', minimum: 1, description: '第二层数量' },
+    layer3: { type: 'integer', minimum: 1, description: '第三层数量' },
   },
 } as const
 
@@ -32,9 +34,10 @@ const updatePackagingRequestSchema = {
   type: 'object',
   properties: {
     name: { type: 'string', description: '配置名称' },
-    packagingType: { type: 'string', description: '包装类型' },
-    perBox: { type: 'integer', minimum: 1, description: '每箱数量' },
-    perCarton: { type: 'integer', minimum: 1, description: '每 carton 数量' },
+    packagingType: { type: 'string', enum: ['standard_box', 'no_box', 'blister_direct', 'blister_bag'], description: '包装类型' },
+    layer1: { type: 'integer', minimum: 1, description: '第一层数量' },
+    layer2: { type: 'integer', minimum: 1, description: '第二层数量' },
+    layer3: { type: 'integer', minimum: 1, description: '第三层数量' },
   },
 } as const
 
@@ -76,37 +79,38 @@ const packagingMaterialSchema = {
   properties: {
     id: { type: 'string', format: 'uuid' },
     packagingConfigId: { type: 'string', format: 'uuid', description: '包装配置ID' },
-    name: { type: 'string', description: '包材名称' },
-    quantity: { type: 'number', minimum: 0, description: '数量' },
-    price: { type: 'number', minimum: 0, description: '单价' },
+    materialId: { type: 'string', format: 'uuid', description: '原料ID' },
+    quantity: { type: 'number', minimum: 0, description: '用量' },
     boxLength: { type: 'number', nullable: true, description: '箱子长度' },
     boxWidth: { type: 'number', nullable: true, description: '箱子宽度' },
     boxHeight: { type: 'number', nullable: true, description: '箱子高度' },
+    boxVolume: { type: 'number', nullable: true, description: '单箱材积（cuft）' },
+    material: materialSchema,
   },
 } as const
 
 const createPackagingMaterialRequestSchema = {
   type: 'object',
-  required: ['name', 'quantity', 'price'],
+  required: ['materialId', 'quantity'],
   properties: {
-    name: { type: 'string', description: '包材名称' },
-    quantity: { type: 'number', minimum: 0, description: '数量' },
-    price: { type: 'number', minimum: 0, description: '单价' },
+    materialId: { type: 'string', format: 'uuid', description: '原料ID' },
+    quantity: { type: 'number', minimum: 0, description: '用量' },
     boxLength: { type: 'number', description: '箱子长度' },
     boxWidth: { type: 'number', description: '箱子宽度' },
     boxHeight: { type: 'number', description: '箱子高度' },
+    boxVolume: { type: 'number', description: '单箱材积（cuft）' },
   },
 } as const
 
 const updatePackagingMaterialRequestSchema = {
   type: 'object',
   properties: {
-    name: { type: 'string', description: '包材名称' },
-    quantity: { type: 'number', minimum: 0, description: '数量' },
-    price: { type: 'number', minimum: 0, description: '单价' },
+    materialId: { type: 'string', format: 'uuid', description: '原料ID' },
+    quantity: { type: 'number', minimum: 0, description: '用量' },
     boxLength: { type: 'number', description: '箱子长度' },
     boxWidth: { type: 'number', description: '箱子宽度' },
     boxHeight: { type: 'number', description: '箱子高度' },
+    boxVolume: { type: 'number', description: '单箱材积（cuft）' },
   },
 } as const
 

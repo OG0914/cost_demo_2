@@ -193,6 +193,8 @@ export const modelSchema = {
     imageUrl: { type: 'string', nullable: true, description: '图片URL' },
     regulationId: { type: 'string', format: 'uuid', description: '法规ID' },
     regulation: regulationSchema,
+    bomCount: { type: 'integer', description: 'BOM 原料数量' },
+    packagingConfigCount: { type: 'integer', description: '包装配置数量' },
     createdAt: { type: 'string', format: 'date-time' },
     updatedAt: { type: 'string', format: 'date-time' },
   },
@@ -213,14 +215,39 @@ export const bomMaterialSchema = {
 } as const
 
 // 包装配置相关 Schema
+export const packagingMaterialSchema = {
+  type: 'object',
+  properties: {
+    id: { type: 'string', format: 'uuid' },
+    packagingConfigId: { type: 'string', format: 'uuid', description: '包装配置ID' },
+    materialId: { type: 'string', format: 'uuid', description: '原料ID' },
+    quantity: { type: 'number', minimum: 0, description: '用量' },
+    boxLength: { type: 'number', nullable: true, description: '箱子长度' },
+    boxWidth: { type: 'number', nullable: true, description: '箱子宽度' },
+    boxHeight: { type: 'number', nullable: true, description: '箱子高度' },
+    boxVolume: { type: 'number', nullable: true, description: '单箱材积（cuft）' },
+    material: materialSchema,
+  },
+} as const
+
 export const packagingConfigSchema = {
   type: 'object',
   properties: {
     id: { type: 'string', format: 'uuid' },
     name: { type: 'string', description: '配置名称' },
     modelId: { type: 'string', format: 'uuid', description: '型号ID' },
-    description: { type: 'string', nullable: true, description: '描述' },
+    packagingType: { type: 'string', enum: ['standard_box', 'no_box', 'blister_direct', 'blister_bag'], description: '包装类型' },
+    perBox: { type: 'integer', nullable: true, description: '每盒数量' },
+    perCarton: { type: 'integer', description: '每箱数量' },
+    layer1: { type: 'integer', description: '第一层数量' },
+    layer2: { type: 'integer', description: '第二层数量' },
+    layer3: { type: 'integer', nullable: true, description: '第三层数量' },
     model: modelSchema,
+    packagingMaterials: {
+      type: 'array',
+      items: packagingMaterialSchema,
+      description: '包材列表',
+    },
   },
 } as const
 

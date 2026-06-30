@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useQuery } from '@tanstack/react-query'
 import { Plus, Search, MoreHorizontal, Pencil, Trash2, Filter, Layers, Eye } from 'lucide-react'
 import {
   Card,
@@ -45,12 +46,15 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog'
+import { SearchableSelect } from '@/components/searchable-select'
 import { toast } from 'sonner'
 import { useModels } from '@/hooks/api/use-models'
 import { useRegulations } from '@/hooks/api/use-regulations'
-import { useSystemConfig } from '@/hooks/api/use-system-config'
+import { useSystemConfigs, useUpdateSystemConfig } from '@/hooks/api/use-system-config'
+import { modelApi } from '@/lib/api'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Model, Regulation } from '@cost/shared-types'
+import { PACKAGING_TYPE_META } from '@/lib/constants'
 
 const DEFAULT_CATEGORIES = ['半面罩', '口罩', '全面罩', '配件']
 const DEFAULT_SERIES = ['D系列', 'P系列', 'N系列', 'X系列']
@@ -65,8 +69,8 @@ function parseStringArray(value: unknown, fallback: string[]): string[] {
 export default function ModelsPage() {
   const { models, isLoading: isLoadingModels, create, update, delete: deleteModel, isCreating, isUpdating, isDeleting } = useModels()
   const { regulations, isLoading: isLoadingRegulations } = useRegulations()
-  const { data: seriesConfig } = useSystemConfig('modelSeries')
-  const { data: categoriesConfig } = useSystemConfig('modelCategories')
+  const { data: configs } = useSystemConfigs()
+  const updateSystemConfig = useUpdateSystemConfig()
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [regulationFilter, setRegulationFilter] = useState<string>('all')
@@ -80,6 +84,9 @@ export default function ModelsPage() {
     category: '',
     series: '',
   })
+
+  const seriesConfig = configs?.find((c) => c.key === 'modelSeries')
+  const categoriesConfig = configs?.find((c) => c.key === 'modelCategories')
 
   const categories = parseStringArray(categoriesConfig?.value, DEFAULT_CATEGORIES)
   const series = parseStringArray(seriesConfig?.value, DEFAULT_SERIES)
@@ -120,6 +127,15 @@ export default function ModelsPage() {
       toast.error('请填写完整信息')
       return
     }
+
+    // 配置不存在时自动创建默认值，避免后续依赖缺失
+    if (!seriesConfig) {
+      updateSystemConfig.mutate({ key: 'modelSeries', value: DEFAULT_SERIES })
+    }
+    if (!categoriesConfig) {
+      updateSystemConfig.mutate({ key: 'modelCategories', value: DEFAULT_CATEGORIES })
+    }
+
     const payload = {
       name: formData.name,
       regulationId: formData.regulationId,
@@ -145,9 +161,25 @@ export default function ModelsPage() {
     return (regulations ?? []).find((r: Regulation) => r.id === id)?.name || '-'
   }
 
-  // 临时使用空数组，后续可通过API获取BOM和包装配置
-  const selectedModelBom: Array<{ id: string; material?: { name: string; unit: string }; quantity: number }> = []
-  const selectedModelPackaging: Array<{ id: string; name: string; packagingType: string }> = []
+  const { data: selectedModelBom = [] } = useQuery({
+    queryKey: ['model-bom', editingItem?.id],
+    queryFn: async () => {
+      if (!editingItem) return []
+      const response = await modelApi.getBom(editingItem.id)
+      return (response.data ?? []) as Array<{ id: string; material?: { name: string; unit: string }; quantity: number }>
+    },
+    enabled: detailDialogOpen && !!editingItem?.id,
+  })
+
+  const { data: selectedModelPackaging = [] } = useQuery({
+    queryKey: ['model-packaging-configs', editingItem?.id],
+    queryFn: async () => {
+      if (!editingItem) return []
+      const response = await modelApi.getPackagingConfigs(editingItem.id)
+      return (response.data ?? []) as Array<{ id: string; name: string; packagingType: string }>
+    },
+    enabled: detailDialogOpen && !!editingItem?.id,
+  })
 
   if (isLoading) {
     return (
@@ -235,9 +267,8 @@ export default function ModelsPage() {
                   </TableRow>
                 ) : (
                   filteredModels.map((item) => {
-                    // 临时使用0，后续可通过API获取
-                    const bomCount = 0
-                    const packagingCount = 0
+                    const bomCount = item.bomCount ?? 0
+                    const packagingCount = item.packagingConfigCount ?? 0
                     return (
                       <TableRow key={item.id}>
                         <TableCell className="font-medium">{item.name}</TableCell>
@@ -351,19 +382,14 @@ export default function ModelsPage() {
               </div>
               <div className="space-y-2">
                 <Label>产品系列</Label>
-                <Select
+                <SearchableSelect
+                  options={series.map((s) => ({ value: s, label: s }))}
                   value={formData.series}
-                  onValueChange={(value) => setFormData({ ...formData, series: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="选择系列" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {series.map((s) => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  onChange={(value) => setFormData({ ...formData, series: value })}
+                  placeholder="选择系列"
+                  searchPlaceholder="搜索系列..."
+                  emptyText="未找到匹配系列"
+                />
               </div>
             </div>
           </div>
@@ -428,7 +454,7 @@ export default function ModelsPage() {
                 {selectedModelPackaging.map((item) => (
                   <div key={item.id} className="flex items-center justify-between rounded-lg border p-2">
                     <span>{item.name}</span>
-                    <Badge variant="secondary">{item.packagingType}</Badge>
+                    <Badge variant="secondary">{PACKAGING_TYPE_META[item.packagingType as keyof typeof PACKAGING_TYPE_META]?.label ?? item.packagingType}</Badge>
                   </div>
                 ))}
                 {selectedModelPackaging.length === 0 && (

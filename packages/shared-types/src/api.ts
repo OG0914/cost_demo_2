@@ -137,17 +137,24 @@ export interface CreatePackagingConfigRequest {
   modelId: string
   name: string
   packagingType: string
-  perBox: number
-  perCarton: number
+  layer1: number
+  layer2: number
+  layer3?: number | null
 }
 
 export interface UpdatePackagingConfigRequest {
   name?: string
   packagingType?: string
-  perBox?: number
-  perCarton?: number
+  layer1?: number
+  layer2?: number
+  layer3?: number | null
 }
 
+
+export interface CopyBomRequest {
+  sourceModelId: string
+  targetModelId: string
+}
 export interface CreateProcessConfigRequest {
   packagingConfigId: string
   name: string
@@ -164,22 +171,21 @@ export interface UpdateProcessConfigRequest {
 }
 
 export interface CreatePackagingMaterialRequest {
-  packagingConfigId: string
-  name: string
+  materialId: string
   quantity: number
-  price: number
   boxLength?: number
   boxWidth?: number
   boxHeight?: number
+  boxVolume?: number
 }
 
 export interface UpdatePackagingMaterialRequest {
-  name?: string
+  materialId?: string
   quantity?: number
-  price?: number
   boxLength?: number
   boxWidth?: number
   boxHeight?: number
+  boxVolume?: number
 }
 
 // ==================== 成本计算模块 ====================
