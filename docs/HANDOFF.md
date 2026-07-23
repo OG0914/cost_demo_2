@@ -1,9 +1,9 @@
 # Handoff 文档
 
-> **最后更新**: 2026-06-29
+> **最后更新**: 2026-07-01
 > **交接人**: 八月团队 (Claude 4.6)
 > **项目**: cost_demo_2 - 成本核算管理系统 v2
-> **状态**: ✅ 产品系列/分类系统配置化、响应工具函数合并、旧路由 Zod 验证、BOM 复制已提交；Task 3（包材关联原料）代码已实现但 ⚠️ 未合并到 main，仅存在于 stash/worktree 中
+> **状态**: 🚧 前端类型债修复已实施完成，待 Lucas 运行态审查通过后提交
 
 ---
 
@@ -22,49 +22,99 @@ system 页面:    ✅ 已迁移到真实 API
 删除成功提示:   ✅ 已显示具体项目名称
 响应工具函数合并: ✅ 已统一为 lib/response-helpers.ts
 旧路由 Zod 验证: ✅ 已补充 schema 并替换 request.body as 断言
-包材关联原料:  ⚠️ 代码在 stash/worktree 中，未合并到 main
+包材关联原料:  ✅ 已提交并推送 main (`ece8942`)
 BOM 复制功能:   ✅ 已接真实 API（`POST /api/v1/bom/copy`）
 登录页自动刷新: ✅ 已修复（切换 webpack 后稳定）
+前端类型债修复: ✅ 已实施完成（13 个文件），待运行态审查后提交
 后端服务:      ✅ 运行中 (http://localhost:3000)
 前端服务:      ✅ 运行中 (http://localhost:5174，webpack 模式)
 数据迁移:      ⚠️ 重新 seed 后真实数据已清空，需重新迁移
 本地 PostgreSQL: ✅ Docker 容器运行中
 ```
 
-### 当前重点任务（2026-06-29）
+### 当前重点任务（2026-06-29 ~ 2026-07-01）
 
 | 任务 | 状态 | 说明 |
 |------|------|------|
 | **Task 1: 产品系列/分类改为系统配置维护** | ✅ 已提交 (`9298246`) | `system/page.tsx` 已引入 `ModelDictionaryConfig`，`models/page.tsx` 已读取 SystemConfig |
 | **Task 2: BOM 复制功能完整实现** | ✅ 已完成 | 前端 `bom/page.tsx` 已调用真实 `POST /api/v1/bom/copy`；后端 copy 端点与 service 测试已存在并验证通过 |
-| **Task 3: 包材关联原料** | ⚠️ 代码已实现但未合并到 main | 代码当前存在于 `stash@{0}` 和 `.claude/worktrees/task3-packaging-material/` 中，尚未进入 main 分支；需选择处置方案后合并 |
+| **Task 3: 标准包装类型复刻 + 包材关联原料 + 运费计算** | ✅ 已提交并推送 main (`ece8942`) | `PackagingMaterial` 关联 `Material` 表；新增 4 种标准包装类型、层级计算、boxVolume、LCL/FCL 运费；前端包装配置页/型号管理同步完成 |
+| **Task 4: 前端类型债修复（扁平 Quotation + 运行时 bug 修复）** | ✅ 已实施完成，待审查提交 | 补全 `@cost/shared-types` 的 `Quotation`/`PackagingConfig`，13 个文件 `q.costs.X → q.X`；修复 `cost/new` 选择型号后包装配置不加载、下一步禁用问题；前端 typecheck 0 错误、测试 59 passed、后端 136 passed |
 
 ---
 
-## ⚠️ 重要状态纠正：Task 3（包材关联原料）
+## ✅ Task 3 完成说明（2026-06-30）
 
-> **此前 `tasks/todo.md` 与本文件将 Task 3 标记为「已完成」，经 ZCODE 全面彻查后发现该记录不准确。**
+Task 3 已按 `docs/plans/2026-06-25-task3-packaging-material-plan.md` 实施完毕，并随 `ece8942` 提交并推送至 main。
 
-### 真实状态
+### 交付内容
 
-- **主分支 `main` 上无 Task 3 代码**：`packages/database/prisma/schema.prisma` 中的 `PackagingMaterial` 仍保留 `name` / `price` 字段，无 `materialId`，无 `Material` 关联
-- **代码实际存放位置**：
-  - `stash@{0}`（基于旧提交 `086b51c`）：14 个文件，354 行变更，包含完整前后端改造
-  - `.claude/worktrees/task3-packaging-material/`：在 stash 基础上又新增了 `boxVolume` 字段、迁移文件、`searchable-select.tsx` 组件、新计划文件等
-- **worktree 分支状态**：`worktree-task3-packaging-material` 实际指向 `9298246`（与 main 一致），无独有提交
+- **标准包装类型**：`PackagingConfig.packagingType` 规范为 `standard_box` / `no_box` / `blister_direct` / `blister_bag`
+- **层级计算**：新增 `layer1/layer2/layer3`，后端自动计算 `perBox/perCarton`
+- **包材关联原料**：`PackagingMaterial` 新增 `materialId`，移除 `name/price`，价格运行时从 `Material` 读取
+- **外箱材积**：`PackagingMaterial` 新增 `boxVolume`（CUFT），用于运费计算
+- **运费计算**：`cost-calculator.ts` 实现 LCL（按 CBM 档位）与 FCL（按柜型容积）公式
+- **系统配置**：`/system` 页支持维护 LCL 档位价格、FCL 容积、固定费用
+- **前端组件**：新增 `SearchableSelect` 可搜索下拉；包装配置页支持增删改/包材管理
+- **型号管理同步**：型号列表聚合 BOM/包装配置真实计数，详情弹窗展示真实数据
 
-### 风险
+### 关键提交
 
-- 文档与代码状态不一致，可能导致后续排期/验收误判
-- stash 中的代码可能被 `git stash clear` 误删
-- worktree 与 main 状态冲突，占用磁盘空间
+```
+commit ece8942
+@ feat: 复刻旧系统标准包装类型与运费计算
+```
 
-### 待 Lucas 决策
+### 验证结果
 
-请选择 Task 3 代码的处置方案：
+- 后端测试：`136/136` 通过
+- 前端类型检查：本次修改的页面/组件无新增类型错误
+- 浏览器验收：已通过 Lucas 多轮验收反馈
 
-- **方案 A**：从 `stash@{0}` + worktree 目录中恢复代码到 main，补全/回归测试后提交
-- **方案 B**：废弃现有 worktree/stash 代码，按 `docs/plans/2026-06-25-task3-packaging-material-plan.md` 重新实施
+---
+
+## ✅ Task 4 完成说明（2026-06-30 ~ 2026-07-01）
+
+Task 4 已按 `docs/plans/2026-06-30-frontend-type-debt-fix.md` 实施完毕，当前状态为**已实施完成，待 Lucas 运行态审查通过后提交**。
+
+### 交付内容
+
+- **类型对齐**：`@cost/shared-types` 的 `Quotation` 补全 `regulationId`/`regulation`/`reviewedAt`，`saleType`/`shippingType`/`status` 收窄为联合类型，新增 `PackagingConfig` 接口替换 `packagingConfig?: unknown`
+- **扁平成本字段**：`cost/[id]`、`cost/compare`、`cost/records`、`review/pending`、`review/completed` 等页面统一从 `q.costs?.X` 改为 `q.X`
+- **运行时 bug 修复**：`cost/new/page.tsx` 中 `modelApi.getPackagingConfigs` 与 `quotationApi.calculate` 因 axios 拦截器已 unwrap 信封，原代码多取了一层 `.data`，导致选择型号后包装配置为空、下一步按钮禁用。已修正为 `response.data`
+- **外围类型修复**：`notifications/page.tsx` 加 `materials?.find`、`master/processes/page.tsx` 补充 `packagingConfigId`、`error-boundary.tsx` 归一化 `null`/`undefined`、`use-bom.ts` 显式 `BomMaterialItem` 类型
+- **测试修复**：`use-quotations.test.ts` 用 `act()` 包裹 mutation 调用，修正 React Query v5 第二个参数导致的断言不匹配问题
+
+### 改动文件（13 个）
+
+```
+packages/shared-types/src/index.ts
+packages/shared-types/src/api.ts
+apps/web/app/(app)/cost/[id]/page.tsx
+apps/web/app/(app)/cost/compare/page.tsx
+apps/web/app/(app)/cost/new/page.tsx
+apps/web/app/(app)/cost/records/page.tsx
+apps/web/app/(app)/review/pending/page.tsx
+apps/web/app/(app)/review/completed/page.tsx
+apps/web/app/(app)/notifications/page.tsx
+apps/web/app/(app)/master/processes/page.tsx
+apps/web/components/error-boundary.tsx
+apps/web/hooks/api/use-bom.ts
+apps/web/hooks/use-quotations.test.ts
+```
+
+### 验证结果
+
+| 检查项 | 结果 |
+|---|---|
+| 前端 typecheck | **0 错误** |
+| 前端测试 | **59 passed** |
+| 后端测试 | **136 passed** |
+
+### 已知后续问题
+
+1. `cost/new/page.tsx` 的 `handleSubmit` 尚未把 `calculateCosts` 返回的 7 个成本字段传入 `createQuotation`，实际保存会失败；需后续任务补齐。
+2. 后端 `quotation.service.ts` 未处理 `customerName`（新客户名）创建逻辑，填写新客户名保存也会失败。
 
 ### 2026-06-24 新增工作（三项 Bug 修复）
 
@@ -74,7 +124,7 @@ BOM 复制功能:   ✅ 已接真实 API（`POST /api/v1/bom/copy`）
 |------|---------|------|---------|
 | 1. 产品系列硬编码 | A（系列+分类均改为 SystemConfig 维护） | ✅ 已提交 (`9298246`) | `apps/web/app/(app)/system/page.tsx`、`apps/web/app/(app)/master/models/page.tsx`、`apps/web/components/system/model-dictionary-config.tsx`、`apps/web/components/system/model-dictionary-card.tsx` |
 | 2. BOM 复制假成功 | B（完整实现后端 copy API + 前端调用） | ✅ 已完成 | `apps/web/hooks/api/use-bom.ts`、`apps/web/app/(app)/master/bom/page.tsx`；后端 copy 端点与测试已存在 |
-| 3. 包材手动输入名称 | A（PackagingMaterial 完全关联 Material 表） | ⚠️ 代码已实现但未合并到 main | `packages/database/prisma/schema.prisma`、共享类型、backend service/repository/controller/tests、frontend hook/page（当前仅在 stash/worktree 中，未提交） |
+| 3. 包材手动输入名称 | A（PackagingMaterial 完全关联 Material 表） | ✅ 已提交并推送 main (`ece8942`) | `packages/database/prisma/schema.prisma`、共享类型、backend service/repository/controller/tests、frontend hook/page |
 
 **Task 1 已完成的代码变更**:
 - 新建 `apps/web/components/system/model-dictionary-card.tsx` — 可复用的字典维护卡片（增/删/输入）
@@ -107,8 +157,8 @@ BOM 复制功能:   ✅ 已接真实 API（`POST /api/v1/bom/copy`）
 | bom_materials | ✅ | 10 | 种子 BOM |
 | packaging_configs | ✅ | 5 | 种子包装配置 |
 | process_configs | ✅ | 8 | 种子工序配置 |
-| packaging_materials | ✅ | 0 | Task 3 迁移已应用：移除 `name`/`price`，新增 `material_id` 外键；原种子数据已清空，需通过 UI 重新维护 |
-| system_config | ✅ | 6 | 种子系统配置 |
+| packaging_materials | ✅ | 0 | 已关联 `materials` 表，字段为 `material_id`/`quantity`/`box_volume`；Task 3 迁移时清空旧数据，当前种子数据中无示例包材，需通过 UI 维护 |
+| system_config | ✅ | 6+ | 种子系统配置，新增 LCL/FCL 运费参数 |
 | quotations | ⚠️ | 0 | **重新 seed 清空了此前迁移的 29 条报价单数据** |
 | standard_costs | ⚠️ | 0 | 已清空 |
 | notifications | ⚠️ | 0 | 已清空 |
@@ -448,51 +498,41 @@ cd apps/api && pnpm test
 
 ## 下一步任务
 
-### 🔴 当前焦点：Task 2 BOM 复制功能完整实现
+### 🟡 中优先级（代码整洁度与类型安全）
 
-**计划文件**: `docs/plans/2026-06-24-bug-fixes-plan.md`
+1. **拆分臃肿页面组件** (3小时)
+   - `system/page.tsx` → 已部分拆分（ModelDictionaryConfig），可继续拆分剩余部分
+   - `cost/new/page.tsx` → 拆分为步骤子组件
 
-1. **Task 1: 产品系列/分类改为系统配置维护** ✅ 已完成（`9298246`）
-   - 已新建 `ModelDictionaryConfig` / `ModelDictionaryCard` 组件
-   - `system/page.tsx` 已引入配置维护卡片
-   - `models/page.tsx` 已移除硬编码，改为读取 SystemConfig
-
-2. **Task 2: BOM 复制功能完整实现** 🚧 进行中
-   - 方案 B：完整实现后端 copy API + 前端调用
-   - 当前状态：前端 `bom/page.tsx` 复制弹窗 UI 已存在，但 `handleCopyBom` 仅显示本地 `toast.success('BOM已复制')`，未调用真实 API；后端 `apps/api/src/services/bom.service.ts` 与 `apps/api/src/routes/bom.routes.ts` 尚未提供 copy 端点
-   - **关键文件**: `packages/shared-types/src/api.ts`、`apps/api/src/services/bom.service.ts`、`apps/api/src/routes/bom.routes.ts`、`apps/web/lib/api.ts`、`apps/web/hooks/api/use-bom.ts`、`apps/web/app/(app)/master/bom/page.tsx`
-
-3. **Task 3: 包材关联原料并改为选择/搜索** ⚠️ 代码已实现但未合并到 main
-   - 方案 A：`PackagingMaterial` 完全关联 `Material` 表
-   - 关键决策: `materialId` 必填；`name`/`price` 运行时从 Material 取；旧数据已丢弃
-   - **当前状态**：代码位于 `stash@{0}`（基于 `086b51c`）和 `.claude/worktrees/task3-packaging-material/` 中，尚未经过 commit、review、合并流程，不能视为已交付
-   - **下一步**：需 Lucas 确认处置方案（恢复并合并 / 废弃重作）
-
-### 🟡 中优先级（代码整洁度）
-
-4. **拆分臃肿页面组件** (3小时)
-   - system/page.tsx → 已部分拆分（ModelDictionaryConfig），可继续拆分剩余部分
-   - cost/new/page.tsx (632行) → 拆分为步骤子组件
+2. **完善类型安全** (4小时)
+   - 替换 API 层的 `unknown[]` 为具体类型
+   - 同步 `shared-types` 与 Prisma 类型
+   - 修复 `apps/api/src/**/*.test.ts` 中的既有类型错误
 
 ### 🟢 低优先级（重构旧架构）
 
-5. **将7个旧路由重构为分层架构** (8小时)
-   - 提取Controller/Service/Repository
+3. **将剩余旧路由重构为分层架构** (8小时)
+   - 提取 Controller/Service/Repository
    - 统一错误处理和响应格式
 
-6. **完善类型安全** (4小时)
-   - 替换API层的 `unknown[]` 为具体类型
-   - 同步 `shared-types` 与 Prisma 类型
+### ✅ 已完成（2026-06-30）
+
+- **标准包装类型复刻 + 包材关联原料 + 运费计算** (`ece8942`)：
+  - 4 种标准包装类型、层级字段、自动计算 perBox/perCarton
+  - `PackagingMaterial` 关联 `Material` 表，运行时读取名称/价格
+  - `boxVolume`（CUFT）与 LCL/FCL 运费计算
+  - 前端包装配置页、型号管理同步、`SearchableSelect` 组件
+  - 后端测试 `136/136` 通过
 
 ### ✅ 已完成（2026-06-25 前后）
 
 - **合并两套响应工具函数** (`e394b7c`)：统一使用 `lib/response-helpers.ts`，删除 `utils/http-response.ts`
 - **为旧路由补充 Zod 验证** (`4da1e58`)：models/bom/regulations/standard-costs 等旧路由添加 schema 定义，替换 `request.body as` 类型断言
-- **包材关联原料并改为选择/搜索（Task 3）** — 代码已实现，但 ⚠️ 未合并到 main，仍存放在 `stash@{0}` 与 worktree 中
+- **BOM 复制功能完整实现**：后端 copy API + 前端调用，已包含在 `ece8942` 中
 
 ### ✅ 已完成（2026-06-24）
 
-- 产品系列/分类改为系统配置维护（Task 1）已提交
+- 产品系列/分类改为系统配置维护（Task 1）已提交 (`9298246`)
 - 三项 Bug 修复方案确认并写入计划文件
 - `docs/plans/2026-06-24-bug-fixes-plan.md` 已置于项目目录
 
@@ -552,17 +592,23 @@ cd apps/api && pnpm test
 - [x] **统一删除弹窗** — 8 个页面的删除确认弹窗按钮样式一致（白底红字红边框 + Trash2 图标）
 - [x] **种子数据 UUID** — 所有种子实体 ID 为 UUID 格式，API 路由 `uuidParamSchema` 验证通过
 
+### 新增问题验证（2026-07-01 本次待 Lucas 审查）
+
+- [ ] **前端 typecheck 清零** — `cd apps/web && npx tsc --noEmit` 无 `error TS`
+- [ ] **前端测试通过** — `cd apps/web && pnpm test` 显示 `59 passed`
+- [ ] **后端测试通过** — `cd apps/api && pnpm test` 显示 `136 passed`
+- [ ] **新增成本分析流程** — 选择法规 → 选择型号 → 包装配置加载 → 下一步可点击
+- [ ] **成本预览显示真实数字** — 不是 `¥undefined`
+- [ ] **成本详情 / 成本对比 / 成本记录 / 审核列表** — 成本字段正常显示
+
 ### 浏览器最终验证步骤（Lucas）
 
 1. 启动服务：`cd D:/Desktop/cost_demo_2 && pnpm dev`
-2. 登录后访问 `/system`，确认配置项从 API 加载
-3. 访问 `/master/users`，尝试删除 admin，确认弹出关联数据提示
-4. 访问 `/master/customers`，新增/编辑/删除客户，确认删除弹窗样式统一
-5. 访问 `/master/materials`，新增原料（price 填 `12.50`），确认提交为 number
-6. 访问 `/master/models`，新增型号，确认成功
-7. 访问 `/master/regulations`，新增法规（填写 code），确认成功
-8. 访问 `/master/bom`，选择型号添加原料，确认列表刷新
-9. 打开 F12 Network，确认每个操作发出真实 POST/PUT/DELETE 请求
+2. 登录后访问 `/cost/new`，选择法规与型号，确认包装配置列表出现且下一步可点击
+3. 访问 `/cost/records`，打开任一报价单详情，确认成本表格显示真实数字
+4. 访问 `/cost/compare`，确认图表与表格成本数字正常
+5. 访问 `/review/pending` 与 `/review/completed`，确认总成本列正常显示
+6. 访问 `/notifications`，确认通知列表可加载且无类型报错
 
 - [ ] **分层架构检查**：确认 `models.routes.ts`、`bom.routes.ts` 等7个路由是否已提取Controller/Service/Repository
 - [ ] **Zod验证检查**：确认所有POST/PUT接口不再使用 `request.body as` 类型断言
@@ -584,42 +630,79 @@ cd apps/api && pnpm test
 - ⚠️ **2026-06-23 重新 seed 后，此前迁移的真实业务数据（29 条 quotations 等）已被清空，如需恢复请重新运行迁移脚本**
 - ✅ 端口配置已修复 (3003→3000)
 - ✅ API 服务运行中 (`http://localhost:3000`)
-- ✅ API 测试 `114/114` 通过；`user.service.test.ts` 新增测试 10/10 通过
-- ⚠️ 前端 `pnpm typecheck` 存在既有类型错误（非本次修改引入），本次修改的页面运行时无新增错误
+- ✅ API 测试 `136/136` 通过
+- ✅ 前端 typecheck **0 错误**（本次修复后）
+- ✅ 前端测试 **59/59** 通过
+- ⚠️ 以下改动已完成但未 commit，等待 Lucas 运行态审查：
+  - `packages/shared-types/src/index.ts`
+  - `packages/shared-types/src/api.ts`
+  - `apps/web/app/(app)/cost/[id]/page.tsx`
+  - `apps/web/app/(app)/cost/compare/page.tsx`
+  - `apps/web/app/(app)/cost/new/page.tsx`
+  - `apps/web/app/(app)/cost/records/page.tsx`
+  - `apps/web/app/(app)/review/pending/page.tsx`
+  - `apps/web/app/(app)/review/completed/page.tsx`
+  - `apps/web/app/(app)/notifications/page.tsx`
+  - `apps/web/app/(app)/master/processes/page.tsx`
+  - `apps/web/components/error-boundary.tsx`
+  - `apps/web/hooks/api/use-bom.ts`
+  - `apps/web/hooks/use-quotations.test.ts`
 
-### 最近修改（未提交）
+### 最近修改（未提交，2026-07-01）
 
-**2026-06-24 三项 Bug 修复 — Task 1（产品系列/分类系统配置化）**:
-- `apps/web/components/system/model-dictionary-card.tsx` — 新建可复用字典维护卡片
-- `apps/web/components/system/model-dictionary-config.tsx` — 新建型号字典配置组件
-- `apps/web/app/(app)/system/page.tsx` — 引入 `ModelDictionaryConfig`，维护系列/分类
-- `apps/web/app/(app)/master/models/page.tsx` — 移除硬编码，改为读取 `modelSeries` / `modelCategories` SystemConfig
+**Task 4: 前端类型债修复 + cost/new 运行时 bug 修复**:
+- `packages/shared-types/src/index.ts` — 补全 `Quotation` 字段与 `PackagingConfig` 接口
+- `packages/shared-types/src/api.ts` — `CreateQuotationRequest.customerId` 改为可选，新增 `customerName`
+- `apps/web/app/(app)/cost/[id]/page.tsx` — `q.costs?.X` → `q.X`
+- `apps/web/app/(app)/cost/compare/page.tsx` — `q!.costs?.X` → `q!.X`
+- `apps/web/app/(app)/cost/new/page.tsx` — 修复 `getPackagingConfigs`/`calculate` 的 `.data` 多取一层问题；这是 Lucas 报告的选择型号后无包装配置、下一步禁用的根因
+- `apps/web/app/(app)/cost/records/page.tsx` — 成本字段扁平化、`regulations?.map` 守卫
+- `apps/web/app/(app)/review/pending/page.tsx` / `review/completed/page.tsx` — 成本字段扁平化
+- `apps/web/app/(app)/notifications/page.tsx` — `materials?.find` 守卫
+- `apps/web/app/(app)/master/processes/page.tsx` — 创建工序补充 `packagingConfigId`
+- `apps/web/components/error-boundary.tsx` — `errorInfo.componentStack ?? undefined` 归一化
+- `apps/web/hooks/api/use-bom.ts` — 新增 `BomMaterialItem` 接口，显式标注返回数据
+- `apps/web/hooks/use-quotations.test.ts` — `act()` 包裹 mutation、修正 `toHaveBeenCalledWith` 断言
 
-**2026-06-23 Phase 2 基线前未提交改动（已纳入 d763e6f 之后的工作区，待 Task 1 一起提交）**:
-- `apps/web/lib/api.ts` — `createCrudApi` 默认 `ListType = T[]`，统一列表返回类型
-- `apps/web/hooks/api/use-users.ts` — 移除强转，补全 mutations
-- `apps/web/hooks/api/use-system-config.ts` — 移除 `as unknown` 强转
-- `apps/web/hooks/api/use-quotations.ts` — 返回真实 `meta`
-- `apps/api/src/services/user.service.ts` — 删除前关联检查，返回明确 409 错误
-- `apps/api/src/services/user.service.test.ts` — 新增关联删除测试
-- `apps/web/components/confirm-delete-dialog.tsx` — 新建统一删除确认组件
-- `apps/web/app/(app)/system/page.tsx` — 替换为统一删除弹窗
-- `apps/web/app/(app)/master/regulations/page.tsx` — 替换为统一删除弹窗
-- `apps/web/app/(app)/master/materials/page.tsx` — 替换为统一删除弹窗
-- `apps/web/app/(app)/master/models/page.tsx` — 替换为统一删除弹窗
-- `apps/web/app/(app)/master/customers/page.tsx` — 替换为统一删除弹窗
-- `apps/web/app/(app)/master/bom/page.tsx` — 替换为统一删除弹窗
-- `apps/web/app/(app)/master/packaging/page.tsx` — 替换为统一删除弹窗
-- `apps/web/app/(app)/master/processes/page.tsx` — 替换为统一删除弹窗
-- `packages/database/prisma/seed.ts` — 所有实体 ID 改为 UUID 格式
-- `apps/web/lib/data.ts` — 已删除
+**质量指标**:
+- 前端 typecheck: **0 错误**
+- 前端测试: **59 passed**
+- 后端测试: **136 passed**
 
-**新增计划文件**:
-- `docs/plans/2026-06-24-bug-fixes-plan.md` — Task 2/3 详细实施计划
+**提交纪律**: 根据项目硬性要求，所有改动必须经 Lucas 在运行态审查通过后方可 commit。当前服务已启动，等待 Lucas 审查。
+
+### 最近已提交修改（2026-06-30）
+
+**commit `ece8942` — feat: 复刻旧系统标准包装类型与运费计算**：
+- `packages/database/prisma/schema.prisma` — `PackagingConfig` 增加 `layer1/layer2/layer3`，`perBox` 改可空；`PackagingMaterial` 增加 `materialId`/`boxVolume`
+- `packages/database/prisma/migrations/` — 3 个新迁移：包材关联原料、包装层级与材积、层级字段必填
+- `packages/database/prisma/seed.ts` — 标准包装类型种子数据、LCL/FCL 系统配置初始化
+- `packages/shared-types/src/packaging.ts` — 4 种标准类型、层级计算函数
+- `packages/shared-types/src/index.ts` — `Model` 增加 `bomCount`/`packagingConfigCount`
+- `apps/api/src/lib/schemas.ts` / `swagger-schemas.ts` — 同步新字段与枚举
+- `apps/api/src/services/packaging.service.ts` — 自动计算 `perBox/perCarton`
+- `apps/api/src/services/bom.service.ts` — BOM 复制服务
+- `apps/api/src/repositories/packaging.repository.ts` — 支持新字段查询
+- `apps/api/src/routes/bom.routes.ts` / `models.routes.ts` / `packaging.routes.ts` — BOM copy、型号计数聚合、包装配置路由
+- `apps/api/src/utils/cost-calculator.ts` — LCL/FCL 运费计算
+- `apps/api/src/utils/packaging.test.ts` / `cost-calculator.test.ts` / `services/bom.service.test.ts` / `services/packaging.service.test.ts` / `controllers/packaging.controller.test.ts` — 新增/更新测试
+- `apps/web/components/searchable-select.tsx` — 新增可搜索下拉组件
+- `apps/web/app/(app)/master/packaging/page.tsx` — 包装配置弹窗、包材管理、删除功能
+- `apps/web/app/(app)/master/models/page.tsx` — BOM/包装配置真实计数、详情弹窗真实数据
+- `apps/web/app/(app)/master/bom/page.tsx` / `processes/page.tsx` — 适配标准包装类型
+- `apps/web/app/(app)/cost/new/page.tsx` — 报价页选择包装配置
+- `apps/web/app/(app)/system/page.tsx` — LCL/FCL 参数维护
+- `apps/web/hooks/api/use-bom.ts` / `use-packaging.ts` — 操作成功后刷新型号列表缓存
+- `apps/web/lib/api.ts` / `constants.ts` / `types.ts` — API 类型与常量更新
+- `apps/web/package.json` — 切换 webpack 模式
+- `apps/web/stores/auth-store.ts` — 修复 Zustand hydration 警告
 
 ### 最近提交
 
 ```
+commit ece8942
+@ feat: 复刻旧系统标准包装类型与运费计算
+
 commit 9298246
 @ feat(web): 产品系列与分类改为系统配置维护
 

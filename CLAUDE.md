@@ -414,14 +414,16 @@ pnpm test
 
 ### Commit Rules
 
-**⚠️ 重要：每次 commit 前必须经过 Lucas 同意！**
+**⚠️ 重要：每次 commit 前必须经过 Lucas 同意，且所有改动必须先启动项目经 Lucas 在运行态审查通过！**
 
 执行 `git commit` 前必须：
-1. 向 Lucas 展示即将提交的文件列表 (`git diff --cached --name-only`)
-2. 说明 commit 的类型和内容
-3. 获得 Lucas 明确确认后方可执行
+1. 在本地启动项目（`pnpm dev`），让 Lucas 在浏览器/终端实际查看相关功能
+2. 向 Lucas 展示即将提交的文件列表 (`git diff --cached --name-only`)
+3. 说明 commit 的类型和内容
+4. 获得 Lucas 明确确认后方可执行
 
 **禁止行为：**
+- 未经运行态审查直接 commit
 - 未经同意直接执行 commit
 - 使用 `--no-verify` 跳过 hooks
 - 强制推送 (`--force`) 到 main 分支
