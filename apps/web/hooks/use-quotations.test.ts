@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, waitFor } from '@testing-library/react'
+import { renderHook, waitFor, act } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useQuotations, useQuotation } from './api/use-quotations'
 import { quotationApi } from '@/lib/api'
+import type { Quotation, CreateQuotationRequest } from '@cost/shared-types'
 
 vi.mock('@/lib/api', () => ({
   quotationApi: {
@@ -32,6 +33,46 @@ const createWrapper = () => {
 
 import * as React from 'react'
 
+const createMockQuotation = (overrides: Partial<Quotation> = {}): Quotation => ({
+  id: '1',
+  quotationNo: 'QT-2024-0001',
+  customerId: 'cust1',
+  regulationId: 'reg1',
+  modelId: 'model1',
+  packagingConfigId: 'pack1',
+  saleType: 'domestic',
+  shippingType: 'fcl20',
+  quantity: 100,
+  materialCost: 0,
+  packagingCost: 0,
+  processCost: 0,
+  shippingCost: 0,
+  adminFee: 0,
+  vat: 0,
+  totalCost: 1000,
+  status: 'draft',
+  createdBy: 'user1',
+  createdAt: '2024-01-01T00:00:00.000Z',
+  ...overrides,
+})
+
+const createMockPayload = (): CreateQuotationRequest => ({
+  customerId: 'cust1',
+  regulationId: 'reg1',
+  modelId: 'model1',
+  packagingConfigId: 'pack1',
+  saleType: 'domestic',
+  shippingType: 'fcl20',
+  quantity: 100,
+  materialCost: 0,
+  packagingCost: 0,
+  processCost: 0,
+  shippingCost: 0,
+  adminFee: 0,
+  vat: 0,
+  totalCost: 1000,
+})
+
 describe('useQuotations', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -39,9 +80,10 @@ describe('useQuotations', () => {
 
   it('should fetch quotations list', async () => {
     const mockResponse = {
+      success: true,
       data: [
-        { id: '1', quotationNo: 'QT-2024-0001', status: 'draft' },
-        { id: '2', quotationNo: 'QT-2024-0002', status: 'approved' },
+        createMockQuotation({ id: '1', quotationNo: 'QT-2024-0001', status: 'draft' }),
+        createMockQuotation({ id: '2', quotationNo: 'QT-2024-0002', status: 'approved' }),
       ],
       meta: { page: 1, pageSize: 20, total: 2, totalPages: 1 },
     }
@@ -64,7 +106,7 @@ describe('useQuotations', () => {
   })
 
   it('should apply filters to query', async () => {
-    vi.mocked(quotationApi.getList).mockResolvedValue({ data: [], meta: { page: 1, pageSize: 20, total: 0, totalPages: 0 } })
+    vi.mocked(quotationApi.getList).mockResolvedValue({ success: true, data: [], meta: { page: 1, pageSize: 20, total: 0, totalPages: 0 } })
 
     const filters = { status: 'draft', customerId: 'cust1', page: 1, pageSize: 10 }
     renderHook(() => useQuotations(filters), { wrapper: createWrapper() })
@@ -75,94 +117,126 @@ describe('useQuotations', () => {
   })
 
   it('should create quotation', async () => {
-    vi.mocked(quotationApi.create).mockResolvedValue({ data: { id: '1' } })
+    vi.mocked(quotationApi.create).mockResolvedValue({
+      success: true,
+      data: createMockQuotation(),
+    })
 
     const { result } = renderHook(() => useQuotations(), { wrapper: createWrapper() })
 
-    result.current.create({
-      customerId: 'cust1',
-      modelId: 'model1',
-      quantity: 100,
-      totalCost: 1000,
+    const payload = createMockPayload()
+    act(() => {
+      result.current.create(payload)
     })
 
     await waitFor(() => {
-      expect(result.current.isCreating).toBe(false)
+      expect(quotationApi.create).toHaveBeenCalled()
     })
-
-    expect(quotationApi.create).toHaveBeenCalled()
+    expect(vi.mocked(quotationApi.create).mock.calls[0][0]).toEqual(payload)
   })
 
   it('should update quotation', async () => {
-    vi.mocked(quotationApi.update).mockResolvedValue({ data: { id: '1' } })
+    vi.mocked(quotationApi.update).mockResolvedValue({
+      success: true,
+      data: createMockQuotation({ quantity: 200 }),
+    })
 
     const { result } = renderHook(() => useQuotations(), { wrapper: createWrapper() })
 
-    result.current.update({ id: '1', data: { quantity: 200 } })
-
-    await waitFor(() => {
-      expect(result.current.isUpdating).toBe(false)
+    act(() => {
+      result.current.update({ id: '1', data: { quantity: 200 } })
     })
 
-    expect(quotationApi.update).toHaveBeenCalledWith('1', { quantity: 200 })
+    await waitFor(() => {
+      expect(quotationApi.update).toHaveBeenCalled()
+    })
+    expect(vi.mocked(quotationApi.update).mock.calls[0][0]).toBe('1')
+    expect(vi.mocked(quotationApi.update).mock.calls[0][1]).toEqual({ quantity: 200 })
   })
 
   it('should delete quotation', async () => {
-    vi.mocked(quotationApi.delete).mockResolvedValue({ data: undefined })
+    vi.mocked(quotationApi.delete).mockResolvedValue({ success: true, data: undefined })
 
     const { result } = renderHook(() => useQuotations(), { wrapper: createWrapper() })
 
-    result.current.delete('1')
+    act(() => {
+      result.current.delete('1')
+    })
 
-    // Wait for mutation to complete with longer timeout
     await waitFor(() => {
-      expect(quotationApi.delete).toHaveBeenCalledWith('1')
-    }, { timeout: 5000 })
+      expect(quotationApi.delete).toHaveBeenCalled()
+    })
+    expect(vi.mocked(quotationApi.delete).mock.calls[0][0]).toBe('1')
   })
 
   it('should submit quotation', async () => {
-    vi.mocked(quotationApi.submit).mockResolvedValue({ data: { id: '1', status: 'submitted' } })
+    vi.mocked(quotationApi.submit).mockResolvedValue({
+      success: true,
+      data: createMockQuotation({ status: 'submitted' }),
+    })
 
     const { result } = renderHook(() => useQuotations(), { wrapper: createWrapper() })
 
-    result.current.submit('1')
+    act(() => {
+      result.current.submit('1')
+    })
 
     await waitFor(() => {
-      expect(quotationApi.submit).toHaveBeenCalledWith('1')
-    }, { timeout: 5000 })
+      expect(quotationApi.submit).toHaveBeenCalled()
+    })
+    expect(vi.mocked(quotationApi.submit).mock.calls[0][0]).toBe('1')
   })
 
   it('should approve quotation', async () => {
-    vi.mocked(quotationApi.approve).mockResolvedValue({ data: { id: '1', status: 'approved' } })
+    vi.mocked(quotationApi.approve).mockResolvedValue({
+      success: true,
+      data: createMockQuotation({ status: 'approved' }),
+    })
 
     const { result } = renderHook(() => useQuotations(), { wrapper: createWrapper() })
 
-    result.current.approve({ id: '1', note: 'Approved' })
-
-    await waitFor(() => {
-      expect(result.current.isApproving).toBe(false)
+    act(() => {
+      result.current.approve({ id: '1', note: 'Approved' })
     })
 
-    expect(quotationApi.approve).toHaveBeenCalledWith('1', 'Approved')
+    await waitFor(() => {
+      expect(quotationApi.approve).toHaveBeenCalled()
+    })
+    expect(vi.mocked(quotationApi.approve).mock.calls[0][0]).toBe('1')
+    expect(vi.mocked(quotationApi.approve).mock.calls[0][1]).toBe('Approved')
   })
 
   it('should reject quotation', async () => {
-    vi.mocked(quotationApi.reject).mockResolvedValue({ data: { id: '1', status: 'rejected' } })
+    vi.mocked(quotationApi.reject).mockResolvedValue({
+      success: true,
+      data: createMockQuotation({ status: 'rejected' }),
+    })
 
     const { result } = renderHook(() => useQuotations(), { wrapper: createWrapper() })
 
-    result.current.reject({ id: '1', note: 'Price too high' })
-
-    await waitFor(() => {
-      expect(result.current.isRejecting).toBe(false)
+    act(() => {
+      result.current.reject({ id: '1', note: 'Price too high' })
     })
 
-    expect(quotationApi.reject).toHaveBeenCalledWith('1', 'Price too high')
+    await waitFor(() => {
+      expect(quotationApi.reject).toHaveBeenCalled()
+    })
+    expect(vi.mocked(quotationApi.reject).mock.calls[0][0]).toBe('1')
+    expect(vi.mocked(quotationApi.reject).mock.calls[0][1]).toBe('Price too high')
   })
 
   it('should calculate costs', async () => {
-    const mockResult = { totalCost: 2000, materialCost: 1000 }
-    vi.mocked(quotationApi.calculate).mockResolvedValue({ data: mockResult })
+    const mockResult = {
+      totalCost: 2000,
+      materialCost: 1000,
+      packagingCost: 200,
+      processCost: 300,
+      shippingCost: 400,
+      adminFee: 50,
+      vat: 50,
+      unitCost: 2,
+    }
+    vi.mocked(quotationApi.calculate).mockResolvedValue({ success: true, data: mockResult })
 
     const { result } = renderHook(() => useQuotations(), { wrapper: createWrapper() })
 
@@ -171,15 +245,17 @@ describe('useQuotations', () => {
       packagingConfigId: 'pack1',
       quantity: 100,
       saleType: 'domestic' as const,
-      shippingType: 'land' as const,
+      shippingType: 'lcl' as const,
     }
-    result.current.calculate(input)
+    act(() => {
+      result.current.calculate(input)
+    })
 
     await waitFor(() => {
-      expect(quotationApi.calculate).toHaveBeenCalledWith(input)
-    }, { timeout: 5000 })
+      expect(quotationApi.calculate).toHaveBeenCalled()
+    })
+    expect(vi.mocked(quotationApi.calculate).mock.calls[0][0]).toEqual(input)
 
-    // Wait for state to update
     await waitFor(() => {
       expect(result.current.calculatedResult).toBeDefined()
     }, { timeout: 5000 })
@@ -190,8 +266,8 @@ describe('useQuotations', () => {
 
 describe('useQuotation', () => {
   it('should fetch single quotation', async () => {
-    const mockQuotation = { id: '1', quotationNo: 'QT-2024-0001', status: 'draft' }
-    vi.mocked(quotationApi.getById).mockResolvedValue({ data: mockQuotation })
+    const mockQuotation = createMockQuotation()
+    vi.mocked(quotationApi.getById).mockResolvedValue({ success: true, data: mockQuotation })
 
     const { result } = renderHook(() => useQuotation('1'), { wrapper: createWrapper() })
 
@@ -203,7 +279,7 @@ describe('useQuotation', () => {
   })
 
   it('should handle empty id gracefully', async () => {
-    vi.mocked(quotationApi.getById).mockResolvedValue({ data: null })
+    vi.mocked(quotationApi.getById).mockResolvedValue({ success: true, data: undefined })
 
     const { result } = renderHook(() => useQuotation(''), { wrapper: createWrapper() })
 

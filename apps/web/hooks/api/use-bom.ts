@@ -3,7 +3,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { bomApi, modelApi, materialApi } from '@/lib/api'
 import { toast } from 'sonner'
-import type { CreateBomMaterialRequest, UpdateBomMaterialRequest, CopyBomRequest } from '@cost/shared-types'
+import type { CreateBomMaterialRequest, UpdateBomMaterialRequest, CopyBomRequest, Material } from '@cost/shared-types'
+
+interface BomMaterialItem {
+  id: string
+  modelId: string
+  materialId: string
+  quantity: number
+  sortOrder: number
+  createdAt?: string
+  updatedAt?: string
+  material?: Material
+}
 
 export function useBom(selectedModelId: string) {
   const queryClient = useQueryClient()
@@ -86,11 +97,11 @@ export function useBom(selectedModelId: string) {
   })
 
 // 将BOM数据与物料数据关联
-  const bomWithMaterials = (bomData ?? []).map((item: unknown) => {
+  const bomWithMaterials = ((bomData ?? []) as BomMaterialItem[]).map((item) => {
     const material = (materialsData ?? []).find(
-      (m: unknown) => (m as { id: string }).id === (item as { materialId: string }).materialId
+      (m: Material) => m.id === item.materialId
     )
-    return { ...(item as object), material }
+    return { ...item, material }
   })
 
   return {

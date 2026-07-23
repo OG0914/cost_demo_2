@@ -57,7 +57,7 @@ describe('UserService', () => {
   describe('getList', () => {
     it('should return paginated user list', async () => {
       const mockResult = {
-        data: [{ id: '1', username: 'test', name: 'Test User', email: 'test@example.com', role: 'user', status: 'active', createdAt: new Date(), updatedAt: new Date() }],
+        data: [{ id: '1', username: 'test', name: 'Test User', email: 'test@example.com', role: 'admin' as const, status: 'active' as const, createdAt: new Date(), updatedAt: new Date() }],
         meta: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
       }
       vi.mocked(userRepository.findMany).mockResolvedValue(mockResult)
@@ -71,7 +71,7 @@ describe('UserService', () => {
 
   describe('getById', () => {
     it('should return user by id', async () => {
-      const mockUser = { id: '1', username: 'test', name: 'Test User', email: 'test@example.com', role: 'user', status: 'active', createdAt: new Date(), updatedAt: new Date() }
+      const mockUser = { id: '1', username: 'test', name: 'Test User', email: 'test@example.com', role: 'admin' as const, status: 'active' as const, createdAt: new Date(), updatedAt: new Date() }
       vi.mocked(userRepository.findById).mockResolvedValue(mockUser)
 
       const result = await service.getById('1')
@@ -96,10 +96,10 @@ describe('UserService', () => {
         password: 'password123',
         name: 'New User',
         email: 'new@example.com',
-        role: 'user' as const,
+        role: 'admin' as const,
       }
       const hashedPassword = 'hashedpassword'
-      const mockUser = { id: '1', username: 'newuser', name: 'New User', email: 'new@example.com', role: 'user', status: 'active', createdAt: new Date(), updatedAt: new Date() }
+      const mockUser = { id: '1', username: 'newuser', name: 'New User', email: 'new@example.com', role: 'admin' as const, status: 'active' as const, createdAt: new Date(), updatedAt: new Date() }
 
       vi.mocked(bcrypt.hash).mockResolvedValue(hashedPassword as never)
       vi.mocked(userRepository.create).mockResolvedValue(mockUser)
@@ -112,7 +112,7 @@ describe('UserService', () => {
         password: hashedPassword,
         name: 'New User',
         email: 'new@example.com',
-        role: 'user',
+        role: 'admin',
         status: 'active',
       }))
       expect(result).toEqual(mockUser)
@@ -124,7 +124,7 @@ describe('UserService', () => {
         password: 'password123',
         name: 'New User',
         email: 'new@example.com',
-        role: 'user' as const,
+        role: 'admin' as const,
         status: 'inactive' as const,
       }
       vi.mocked(bcrypt.hash).mockResolvedValue('hashed' as never)
@@ -141,7 +141,7 @@ describe('UserService', () => {
   describe('update', () => {
     it('should update user with provided fields', async () => {
       const input = { name: 'Updated Name', email: 'updated@example.com' }
-      const mockUser = { id: '1', username: 'test', name: 'Updated Name', email: 'updated@example.com', role: 'user', status: 'active', createdAt: new Date(), updatedAt: new Date() }
+      const mockUser = { id: '1', username: 'test', name: 'Updated Name', email: 'updated@example.com', role: 'admin' as const, status: 'active' as const, createdAt: new Date(), updatedAt: new Date() }
       vi.mocked(userRepository.update).mockResolvedValue(mockUser)
 
       const result = await service.update('1', input)

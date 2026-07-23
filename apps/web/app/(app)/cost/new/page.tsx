@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Check, ChevronRight } from 'lucide-react'
@@ -51,7 +51,7 @@ export default function NewCostPage() {
   const { regulations, isLoading: isLoadingRegulations } = useRegulations()
   const { customers, isLoading: isLoadingCustomers } = useCustomers()
   const { models, isLoading: isLoadingModels } = useModels()
-  const { create } = useQuotations()
+  const { create, submit } = useQuotations()
 
   // 派生数据
   const selectedRegulation = regulations?.find((r) => r.id === formData.regulationId)
@@ -87,7 +87,7 @@ export default function NewCostPage() {
     setIsLoadingPackaging(true)
     try {
       const response = await modelApi.getPackagingConfigs(modelId)
-      setPackagingConfigs((response.data?.data ?? []) as Array<{
+      setPackagingConfigs((response.data ?? []) as Array<{
         id: string
         name: string
         packagingType: string
@@ -101,7 +101,7 @@ export default function NewCostPage() {
   }
 
   // 计算成本
-  const calculateCosts = async () => {
+  const calculateCosts = useCallback(async () => {
     if (!formData.modelId || !formData.packagingConfigId) return
 
     setIsCalculating(true)
@@ -113,7 +113,7 @@ export default function NewCostPage() {
         saleType: formData.saleType,
         shippingType: formData.shippingType,
       })
-      const result = response.data?.data
+      const result = response.data
       if (result) {
         setCosts({
           materialCost: result.materialCost ?? 0,
@@ -128,7 +128,12 @@ export default function NewCostPage() {
     } finally {
       setIsCalculating(false)
     }
-  }
+  }, [formData.modelId, formData.packagingConfigId, formData.quantity, formData.saleType, formData.shippingType])
+
+  // 销售类型/运输方式/数量/包装配置变化时自动重算成本
+  useEffect(() => {
+    calculateCosts()
+  }, [calculateCosts])
 
   const selectedPackagingConfig = packagingConfigs.find((p) => p.id === formData.packagingConfigId)
 
@@ -146,9 +151,6 @@ export default function NewCostPage() {
   const handleNext = () => {
     if (currentStep < 5 && canProceed()) {
       setCurrentStep(currentStep + 1)
-      if (currentStep === 2) {
-        calculateCosts()
-      }
     }
   }
 
@@ -160,27 +162,42 @@ export default function NewCostPage() {
 
   const handleSubmit = async () => {
     setIsSubmitting(true)
-    try {
-      create({
-        customerId: formData.customerId || undefined,
-        customerName: formData.customerName || undefined,
-        regulationId: formData.regulationId,
-        modelId: formData.modelId,
-        packagingConfigId: formData.packagingConfigId,
-        saleType: formData.saleType,
-        shippingType: formData.shippingType,
-        quantity: formData.quantity,
-      }, {
-        onSuccess: () => {
-          router.push('/cost/records')
-        },
-        onSettled: () => {
+    create({
+      customerId: formData.customerId || undefined,
+      customerName: formData.customerName || undefined,
+      regulationId: formData.regulationId,
+      modelId: formData.modelId,
+      packagingConfigId: formData.packagingConfigId,
+      saleType: formData.saleType,
+      shippingType: formData.shippingType,
+      quantity: formData.quantity,
+      materialCost: costs.materialCost,
+      packagingCost: costs.packagingCost,
+      processCost: costs.processCost,
+      shippingCost: costs.shippingCost,
+      adminFee: costs.adminFee,
+      vat: costs.vat,
+      totalCost: costs.totalCost,
+    }, {
+      onSuccess: (response) => {
+        const id = response.data?.id
+        if (!id) {
           setIsSubmitting(false)
+          return
         }
-      })
-    } catch {
-      setIsSubmitting(false)
-    }
+        submit(id, {
+          onSuccess: () => {
+            router.push('/cost/records')
+          },
+          onError: () => {
+            setIsSubmitting(false)
+          },
+        })
+      },
+      onError: () => {
+        setIsSubmitting(false)
+      },
+    })
   }
 
   const isLoading = isLoadingRegulations || isLoadingModels || isLoadingCustomers

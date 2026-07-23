@@ -81,7 +81,7 @@ export default function NotificationsPage() {
   const { materials } = useMaterials()
 
   const getMaterialById = (id: string) => {
-    return materials.find((m: { id: string }) => m.id === id)
+    return materials?.find((m: { id: string }) => m.id === id)
   }
 
   const notificationsWithDetails = useMemo(() => {

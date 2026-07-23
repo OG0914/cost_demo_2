@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { QuotationService } from './quotation.service.js'
 import { quotationRepository } from '../repositories/quotation.repository.js'
 import { sequenceService } from '../services/sequence.service.js'
+import type { CreateQuotationInput } from '../lib/schemas.js'
+import type { CostCalculationInput } from '../utils/cost-calculator.js'
 
 vi.mock('../repositories/quotation.repository.js', () => ({
   quotationRepository: {
@@ -104,13 +106,13 @@ describe('QuotationService', () => {
 
   describe('create', () => {
     it('should create quotation with generated number', async () => {
-      const input = {
+      const input: CreateQuotationInput = {
         customerId: 'cust1',
         regulationId: 'reg1',
         modelId: 'model1',
         packagingConfigId: 'pack1',
         saleType: 'domestic',
-        shippingType: 'land',
+        shippingType: 'fcl20',
         quantity: 100,
         materialCost: 1000,
         packagingCost: 200,
@@ -161,7 +163,7 @@ describe('QuotationService', () => {
   describe('delete', () => {
     it('should delete non-approved quotation', async () => {
       vi.mocked(quotationRepository.findByIdBasic).mockResolvedValue({ id: '1', status: 'draft' } as never)
-      vi.mocked(quotationRepository.delete).mockResolvedValue(undefined)
+      vi.mocked(quotationRepository.delete).mockResolvedValue({ id: '1', quotationNo: 'QT-2024-0001' } as Awaited<ReturnType<typeof quotationRepository.delete>>)
 
       await service.delete('1')
 
@@ -242,12 +244,12 @@ describe('QuotationService', () => {
       const mockResult = { totalCost: 1000 }
       vi.mocked(calculateCosts).mockReturnValue(mockResult as never)
 
-      const input = {
+      const input: CostCalculationInput = {
         modelId: 'model1',
         packagingConfigId: 'pack1',
         quantity: 100,
         saleType: 'domestic',
-        shippingType: 'land',
+        shippingType: 'fcl20',
       }
 
       const result = await service.calculate(input)

@@ -34,8 +34,13 @@ describe('useDashboard', () => {
       rejectedQuotations: 10,
       totalCustomers: 50,
       totalMaterials: 200,
+      totalModels: 30,
+      pendingReviews: 20,
+      quotationsTrend: [{ week: '2024-01', count: 10 }],
+      regulationStats: [{ name: 'GB', count: 5 }],
+      topModels: [{ name: 'Model A', count: 3 }],
     }
-    vi.mocked(dashboardApi.getStats).mockResolvedValue({ data: mockStats })
+    vi.mocked(dashboardApi.getStats).mockResolvedValue({ success: true, data: mockStats })
 
     const { result } = renderHook(() => useDashboard(), { wrapper: createWrapper() })
 
@@ -61,10 +66,22 @@ describe('useDashboard', () => {
   })
 
   it('should return undefined stats initially', () => {
-    vi.mocked(dashboardApi.getStats).mockResolvedValue({ data: null })
+    vi.mocked(dashboardApi.getStats).mockResolvedValue({
+      success: true,
+      data: {
+        totalQuotations: 0,
+        totalCustomers: 0,
+        totalModels: 0,
+        pendingReviews: 0,
+        quotationsTrend: [],
+        regulationStats: [],
+        topModels: [],
+      },
+    })
 
     const { result } = renderHook(() => useDashboard(), { wrapper: createWrapper() })
 
+    expect(result.current.isLoading).toBe(true)
     expect(result.current.stats).toBeUndefined()
   })
 })

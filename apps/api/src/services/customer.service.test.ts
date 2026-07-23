@@ -23,7 +23,7 @@ describe('CustomerService', () => {
   describe('getList', () => {
     it('should return paginated customer list', async () => {
       const mockResult = {
-        data: [{ id: '1', code: 'C001', name: 'Test Customer', region: 'CN', createdAt: new Date(), updatedAt: new Date(), createdBy: 'user1', updatedBy: 'user1' }],
+        data: [{ id: '1', code: 'C001', name: 'Test Customer', region: 'CN', note: null, salesPersonId: null, createdAt: new Date(), updatedAt: new Date(), createdBy: 'user1', updatedBy: 'user1' }],
         meta: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
       }
       vi.mocked(customerRepository.findMany).mockResolvedValue(mockResult)
@@ -45,7 +45,7 @@ describe('CustomerService', () => {
 
   describe('getById', () => {
     it('should return customer by id', async () => {
-      const mockCustomer = { id: '1', code: 'C001', name: 'Test Customer', region: 'CN', createdAt: new Date(), updatedAt: new Date(), createdBy: 'user1', updatedBy: 'user1' }
+      const mockCustomer = { id: '1', code: 'C001', name: 'Test Customer', region: 'CN', note: null, salesPersonId: null, createdAt: new Date(), updatedAt: new Date(), createdBy: 'user1', updatedBy: 'user1' }
       vi.mocked(customerRepository.findById).mockResolvedValue(mockCustomer)
 
       const result = await service.getById('1')
@@ -72,7 +72,7 @@ describe('CustomerService', () => {
         note: 'Test note',
         createdBy: 'user1',
       }
-      const mockCustomer = { id: '2', ...input, createdAt: new Date(), updatedAt: new Date(), updatedBy: 'user1' }
+      const mockCustomer = { id: '2', salesPersonId: null, ...input, createdAt: new Date(), updatedAt: new Date(), updatedBy: 'user1' }
       vi.mocked(customerRepository.create).mockResolvedValue(mockCustomer)
 
       const result = await service.create(input)
@@ -114,7 +114,7 @@ describe('CustomerService', () => {
         region: 'JP',
         updatedBy: 'user1',
       }
-      const mockCustomer = { id: '1', code: 'C001', name: 'Updated Name', region: 'JP', createdAt: new Date(), updatedAt: new Date(), createdBy: 'user1', updatedBy: 'user1' }
+      const mockCustomer = { id: '1', code: 'C001', name: 'Updated Name', region: 'JP', note: null, salesPersonId: null, createdAt: new Date(), updatedAt: new Date(), createdBy: 'user1', updatedBy: 'user1' }
       vi.mocked(customerRepository.update).mockResolvedValue(mockCustomer)
 
       const result = await service.update('1', input)

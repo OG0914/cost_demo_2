@@ -65,7 +65,7 @@ describe('UserController', () => {
   describe('getList', () => {
     it('should return user list with pagination', async () => {
       const mockUsers = {
-        data: [{ id: '1', username: 'test', name: 'Test User', email: 'test@example.com', role: 'user', status: 'active', createdAt: new Date(), updatedAt: new Date() }],
+        data: [{ id: '1', username: 'test', name: 'Test User', email: 'test@example.com', role: 'admin' as const, status: 'active' as const, createdAt: new Date(), updatedAt: new Date() }],
         meta: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
       }
       vi.mocked(userService.getList).mockResolvedValue(mockUsers)
@@ -93,7 +93,7 @@ describe('UserController', () => {
 
   describe('getById', () => {
     it('should return user by id', async () => {
-      const mockUser = { id: '1', username: 'test', name: 'Test User', email: 'test@example.com', role: 'user', status: 'active', createdAt: new Date(), updatedAt: new Date() }
+      const mockUser = { id: '1', username: 'test', name: 'Test User', email: 'test@example.com', role: 'admin' as const, status: 'active' as const, createdAt: new Date(), updatedAt: new Date() }
       vi.mocked(userService.getById).mockResolvedValue(mockUser)
       mockRequest = { params: { id: '1' } }
 
@@ -131,7 +131,7 @@ describe('UserController', () => {
         email: 'new@example.com',
         role: 'user',
       }
-      const mockUser = { id: '1', username: 'newuser', name: 'New User', email: 'new@example.com', role: 'user', status: 'active', createdAt: new Date(), updatedAt: new Date() }
+      const mockUser = { id: '1', username: 'newuser', name: 'New User', email: 'new@example.com', role: 'admin' as const, status: 'active' as const, createdAt: new Date(), updatedAt: new Date() }
       vi.mocked(userService.create).mockResolvedValue(mockUser)
       mockRequest = { body: input }
 
@@ -161,7 +161,7 @@ describe('UserController', () => {
   describe('update', () => {
     it('should update user with valid data', async () => {
       const input = { name: 'Updated Name', email: 'updated@example.com' }
-      const mockUser = { id: '1', username: 'test', name: 'Updated Name', email: 'updated@example.com', role: 'user', status: 'active', createdAt: new Date(), updatedAt: new Date() }
+      const mockUser = { id: '1', username: 'test', name: 'Updated Name', email: 'updated@example.com', role: 'admin' as const, status: 'active' as const, createdAt: new Date(), updatedAt: new Date() }
       vi.mocked(userService.update).mockResolvedValue(mockUser)
       mockRequest = { params: { id: '1' }, body: input }
 

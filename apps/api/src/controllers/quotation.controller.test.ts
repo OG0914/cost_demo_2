@@ -3,6 +3,14 @@ import { QuotationController } from './quotation.controller.js'
 import { quotationService } from '../services/quotation.service.js'
 import type { FastifyRequest, FastifyReply } from 'fastify'
 
+type QuotationListResult = Awaited<ReturnType<typeof quotationService.getList>>
+type QuotationDetail = NonNullable<Awaited<ReturnType<typeof quotationService.getById>>>
+type QuotationCreateResult = Awaited<ReturnType<typeof quotationService.create>>
+type QuotationUpdateResult = Awaited<ReturnType<typeof quotationService.update>>
+type QuotationSubmitResult = Awaited<ReturnType<typeof quotationService.submit>>
+type QuotationApproveResult = Awaited<ReturnType<typeof quotationService.approve>>
+type QuotationRejectResult = Awaited<ReturnType<typeof quotationService.reject>>
+
 vi.mock('../services/quotation.service.js', () => ({
   quotationService: {
     getList: vi.fn(),
@@ -54,7 +62,7 @@ describe('QuotationController', () => {
         pageSize: 20,
         totalPages: 1,
       }
-      vi.mocked(quotationService.getList).mockResolvedValue(mockResult)
+      vi.mocked(quotationService.getList).mockResolvedValue(mockResult as QuotationListResult)
       mockRequest = { query: { page: '1', pageSize: '20', status: 'draft' } }
 
       await controller.getList(mockRequest as FastifyRequest, mockReply as FastifyReply)
@@ -75,7 +83,7 @@ describe('QuotationController', () => {
   describe('getById', () => {
     it('should return quotation by id', async () => {
       const mockQuotation = { id: '1', quotationNo: 'QT-2024-0001', status: 'draft' }
-      vi.mocked(quotationService.getById).mockResolvedValue(mockQuotation)
+      vi.mocked(quotationService.getById).mockResolvedValue(mockQuotation as QuotationDetail)
       mockRequest = { params: { id: '1' } }
 
       await controller.getById(mockRequest as FastifyRequest, mockReply as FastifyReply)
@@ -114,7 +122,7 @@ describe('QuotationController', () => {
         vat: 130,
         totalCost: 2080,
       }
-      vi.mocked(quotationService.create).mockResolvedValue({ id: '1', ...input, quotationNo: 'QT-2024-0001', status: 'draft' })
+      vi.mocked(quotationService.create).mockResolvedValue({ id: '1', ...input, quotationNo: 'QT-2024-0001', status: 'draft' } as unknown as QuotationCreateResult)
       mockRequest = {
         body: input,
         user: { userId: 'user1', username: 'testuser', role: 'admin' },
@@ -130,7 +138,7 @@ describe('QuotationController', () => {
   describe('update', () => {
     it('should update quotation with valid data', async () => {
       const input = { quantity: 200, totalCost: 3000 }
-      vi.mocked(quotationService.update).mockResolvedValue({ id: '1', ...input })
+      vi.mocked(quotationService.update).mockResolvedValue({ id: '1', ...input } as unknown as QuotationUpdateResult)
       mockRequest = { params: { id: '1' }, body: input }
 
       await controller.update(mockRequest as FastifyRequest, mockReply as FastifyReply)
@@ -150,7 +158,7 @@ describe('QuotationController', () => {
 
   describe('submit', () => {
     it('should submit draft quotation', async () => {
-      vi.mocked(quotationService.submit).mockResolvedValue({ id: '1', status: 'submitted' })
+      vi.mocked(quotationService.submit).mockResolvedValue({ id: '1', status: 'submitted' } as QuotationSubmitResult)
       mockRequest = { params: { id: '1' } }
 
       await controller.submit(mockRequest as FastifyRequest, mockReply as FastifyReply)
@@ -174,11 +182,11 @@ describe('QuotationController', () => {
 
   describe('approve', () => {
     it('should approve submitted quotation', async () => {
-      vi.mocked(quotationService.approve).mockResolvedValue({ id: '1', status: 'approved' })
+      vi.mocked(quotationService.approve).mockResolvedValue({ id: '1', status: 'approved' } as QuotationApproveResult)
       mockRequest = {
         params: { id: '1' },
         body: { note: 'Approved by manager' },
-        user: { userId: 'admin1' },
+        user: { userId: 'admin1', username: 'admin', role: 'admin' },
       }
 
       await controller.approve(mockRequest as FastifyRequest, mockReply as FastifyReply)
@@ -188,7 +196,7 @@ describe('QuotationController', () => {
 
     it('should return 400 when not submitted', async () => {
       vi.mocked(quotationService.approve).mockRejectedValue(new Error('INVALID_STATUS'))
-      mockRequest = { params: { id: '1' }, body: {}, user: { userId: 'admin1' } }
+      mockRequest = { params: { id: '1' }, body: {}, user: { userId: 'admin1', username: 'admin', role: 'admin' } }
 
       await controller.approve(mockRequest as FastifyRequest, mockReply as FastifyReply)
 
@@ -198,11 +206,11 @@ describe('QuotationController', () => {
 
   describe('reject', () => {
     it('should reject submitted quotation', async () => {
-      vi.mocked(quotationService.reject).mockResolvedValue({ id: '1', status: 'rejected' })
+      vi.mocked(quotationService.reject).mockResolvedValue({ id: '1', status: 'rejected' } as QuotationRejectResult)
       mockRequest = {
         params: { id: '1' },
         body: { note: 'Price too high' },
-        user: { userId: 'admin1' },
+        user: { userId: 'admin1', username: 'admin', role: 'admin' },
       }
 
       await controller.reject(mockRequest as FastifyRequest, mockReply as FastifyReply)
@@ -220,7 +228,7 @@ describe('QuotationController', () => {
         saleType: 'domestic',
         shippingType: 'fcl20',
       }
-      const mockResult = { totalCost: 2000, materialCost: 1000, packagingCost: 200, processCost: 300, shippingCost: 400, adminFee: 50, vat: 130 }
+      const mockResult = { totalCost: 2000, materialCost: 1000, packagingCost: 200, processCost: 300, shippingCost: 400, adminFee: 50, vat: 130, unitCost: 20 }
       vi.mocked(quotationService.calculate).mockResolvedValue(mockResult)
       mockRequest = { body: input }
 

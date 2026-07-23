@@ -218,7 +218,7 @@ export default function CompletedReviewPage() {
                         <Badge variant="outline">{saleTypeLabels[q.saleType]}</Badge>
                       </TableCell>
                       <TableCell className="text-right font-medium">
-                        ¥{q.costs.totalCost.toLocaleString()}
+                        ¥{q.totalCost.toLocaleString()}
                       </TableCell>
                       <TableCell>
                         {q.status === 'approved' ? (

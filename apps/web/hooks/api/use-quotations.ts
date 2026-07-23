@@ -25,6 +25,7 @@ export function useQuotations(filters: QuotationFilters = {}) {
         meta: response.meta,
       }
     },
+    refetchOnMount: 'always',
   })
 
   const createMutation = useMutation({

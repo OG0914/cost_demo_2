@@ -56,23 +56,23 @@ export default function CostComparePage() {
   const chartData = [
     {
       name: '原料成本',
-      ...Object.fromEntries(selectedQuotations.map((q, i) => [`q${i}`, q!.costs?.materialCost ?? 0])),
+      ...Object.fromEntries(selectedQuotations.map((q, i) => [`q${i}`, q!.materialCost ?? 0])),
     },
     {
       name: '包材成本',
-      ...Object.fromEntries(selectedQuotations.map((q, i) => [`q${i}`, q!.costs?.packagingCost ?? 0])),
+      ...Object.fromEntries(selectedQuotations.map((q, i) => [`q${i}`, q!.packagingCost ?? 0])),
     },
     {
       name: '工序成本',
-      ...Object.fromEntries(selectedQuotations.map((q, i) => [`q${i}`, q!.costs?.processCost ?? 0])),
+      ...Object.fromEntries(selectedQuotations.map((q, i) => [`q${i}`, q!.processCost ?? 0])),
     },
     {
       name: '运费',
-      ...Object.fromEntries(selectedQuotations.map((q, i) => [`q${i}`, q!.costs?.shippingCost ?? 0])),
+      ...Object.fromEntries(selectedQuotations.map((q, i) => [`q${i}`, q!.shippingCost ?? 0])),
     },
     {
       name: '管销费用',
-      ...Object.fromEntries(selectedQuotations.map((q, i) => [`q${i}`, q!.costs?.adminFee ?? 0])),
+      ...Object.fromEntries(selectedQuotations.map((q, i) => [`q${i}`, q!.adminFee ?? 0])),
     },
   ]
 
@@ -215,50 +215,50 @@ export default function CostComparePage() {
                     <tr className="border-b">
                       <td className="px-4 py-3 text-muted-foreground">原料成本</td>
                       {selectedQuotations.map((q) => (
-                        <td key={q!.id} className="px-4 py-3 text-right">¥{(q!.costs?.materialCost ?? 0).toLocaleString()}</td>
+                        <td key={q!.id} className="px-4 py-3 text-right">¥{(q!.materialCost ?? 0).toLocaleString()}</td>
                       ))}
                     </tr>
                     <tr className="border-b">
                       <td className="px-4 py-3 text-muted-foreground">包材成本</td>
                       {selectedQuotations.map((q) => (
-                        <td key={q!.id} className="px-4 py-3 text-right">¥{(q!.costs?.packagingCost ?? 0).toLocaleString()}</td>
+                        <td key={q!.id} className="px-4 py-3 text-right">¥{(q!.packagingCost ?? 0).toLocaleString()}</td>
                       ))}
                     </tr>
                     <tr className="border-b">
                       <td className="px-4 py-3 text-muted-foreground">工序成本</td>
                       {selectedQuotations.map((q) => (
-                        <td key={q!.id} className="px-4 py-3 text-right">¥{(q!.costs?.processCost ?? 0).toLocaleString()}</td>
+                        <td key={q!.id} className="px-4 py-3 text-right">¥{(q!.processCost ?? 0).toLocaleString()}</td>
                       ))}
                     </tr>
                     <tr className="border-b">
                       <td className="px-4 py-3 text-muted-foreground">运费</td>
                       {selectedQuotations.map((q) => (
-                        <td key={q!.id} className="px-4 py-3 text-right">¥{(q!.costs?.shippingCost ?? 0).toLocaleString()}</td>
+                        <td key={q!.id} className="px-4 py-3 text-right">¥{(q!.shippingCost ?? 0).toLocaleString()}</td>
                       ))}
                     </tr>
                     <tr className="border-b">
                       <td className="px-4 py-3 text-muted-foreground">管销费用</td>
                       {selectedQuotations.map((q) => (
-                        <td key={q!.id} className="px-4 py-3 text-right">¥{(q!.costs?.adminFee ?? 0).toLocaleString()}</td>
+                        <td key={q!.id} className="px-4 py-3 text-right">¥{(q!.adminFee ?? 0).toLocaleString()}</td>
                       ))}
                     </tr>
                     <tr className="border-b">
                       <td className="px-4 py-3 text-muted-foreground">增值税</td>
                       {selectedQuotations.map((q) => (
-                        <td key={q!.id} className="px-4 py-3 text-right">¥{(q!.costs?.vat ?? 0).toLocaleString()}</td>
+                        <td key={q!.id} className="px-4 py-3 text-right">¥{(q!.vat ?? 0).toLocaleString()}</td>
                       ))}
                     </tr>
                     <tr className="bg-muted/50 font-medium">
                       <td className="px-4 py-3">总成本</td>
                       {selectedQuotations.map((q) => (
-                        <td key={q!.id} className="px-4 py-3 text-right text-base">¥{(q!.costs?.totalCost ?? 0).toLocaleString()}</td>
+                        <td key={q!.id} className="px-4 py-3 text-right text-base">¥{(q!.totalCost ?? 0).toLocaleString()}</td>
                       ))}
                     </tr>
                     <tr>
                       <td className="px-4 py-3 text-muted-foreground">单件成本</td>
                       {selectedQuotations.map((q) => (
                         <td key={q!.id} className="px-4 py-3 text-right font-medium">
-                          ¥{q!.costs?.totalCost && q!.quantity ? (q!.costs.totalCost / q!.quantity).toFixed(2) : '-'}
+                          ¥{q!.totalCost && q!.quantity ? (q!.totalCost / q!.quantity).toFixed(2) : '-'}
                         </td>
                       ))}
                     </tr>

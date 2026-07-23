@@ -118,6 +118,7 @@ export default function ProcessesPage() {
       name: formData.name,
       price: parseFloat(formData.price),
       unit: formData.unit,
+      packagingConfigId: selectedPackagingId || modelPackagingConfigs[0]?.id || '',
     }
 
     if (editingItem) {

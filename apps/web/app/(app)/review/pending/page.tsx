@@ -261,7 +261,7 @@ export default function PendingReviewPage() {
                       </TableCell>
                       <TableCell className="text-right">{q.quantity.toLocaleString()}</TableCell>
                       <TableCell className="text-right font-medium">
-                        ¥{q.costs.totalCost.toLocaleString()}
+                        ¥{q.totalCost.toLocaleString()}
                       </TableCell>
                       <TableCell className="text-muted-foreground">{q.createdAt}</TableCell>
                       <TableCell>
@@ -319,7 +319,7 @@ export default function PendingReviewPage() {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">总成本</span>
-                <span className="font-medium">¥{currentQuotation?.costs.totalCost.toLocaleString()}</span>
+                <span className="font-medium">¥{currentQuotation?.totalCost.toLocaleString()}</span>
               </div>
             </div>
             <div className="space-y-2">

@@ -51,8 +51,9 @@ describe('useAuth', () => {
 
   it('should handle login success', async () => {
     const mockResponse = {
+      success: true,
       data: {
-        user: { id: '1', name: 'Test User', role: 'user' },
+        user: { id: '1', username: 'test', name: 'Test User', email: 'test@example.com', role: 'user' },
         token: 'mock-token',
       },
     }
@@ -87,7 +88,7 @@ describe('useAuth', () => {
   })
 
   it('should handle logout', async () => {
-    vi.mocked(authApi.logout).mockResolvedValue({ data: undefined })
+    vi.mocked(authApi.logout).mockResolvedValue({ success: true, data: undefined })
 
     const { result } = renderHook(() => useAuth(), { wrapper: createWrapper() })
 

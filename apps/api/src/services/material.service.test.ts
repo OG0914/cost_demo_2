@@ -192,7 +192,7 @@ describe('MaterialService', () => {
     it('should delete material when found', async () => {
       const existingMaterial = { id: '1', materialNo: 'M001' } as never
       vi.mocked(materialRepository.findById).mockResolvedValue(existingMaterial as never)
-      vi.mocked(materialRepository.delete).mockResolvedValue(undefined)
+      vi.mocked(materialRepository.delete).mockResolvedValue({ id: '1', materialNo: 'M001' } as Awaited<ReturnType<typeof materialRepository.delete>>)
 
       await service.delete('1')
 

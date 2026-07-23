@@ -60,17 +60,37 @@ export interface Model {
   updatedAt?: string
 }
 
+export interface PackagingConfig {
+  id: string
+  modelId: string
+  name: string
+  packagingType: string
+  perBox?: number | null
+  perCarton: number
+  layer1: number
+  layer2: number
+  layer3?: number | null
+  createdAt?: string
+  updatedAt?: string
+}
+
+export type SaleType = 'domestic' | 'export'                                    // 销售类型
+export type ShippingType = 'fcl20' | 'fcl40' | 'lcl'                            // 运输方式
+export type QuotationStatus = 'draft' | 'submitted' | 'approved' | 'rejected'   // 报价单状态
+
 export interface Quotation {
   id: string
   quotationNo: string
   customerId: string
   customer?: Customer
+  regulationId: string                  // 后端必有，补齐
+  regulation?: Regulation               // 后端 include 返回，补齐
   modelId: string
   model?: Model
   packagingConfigId: string
-  packagingConfig?: unknown
-  saleType: string
-  shippingType: string
+  packagingConfig?: PackagingConfig      // unknown → 具体类型
+  saleType: SaleType                     // string → 联合类型
+  shippingType: ShippingType             // string → 联合类型
   quantity: number
   materialCost: number
   packagingCost: number
@@ -79,9 +99,10 @@ export interface Quotation {
   adminFee: number
   vat: number
   totalCost: number
-  status: string
+  status: QuotationStatus                // string → 联合类型
   createdBy: string
   reviewedBy?: string
+  reviewedAt?: string                    // 后端有此字段，补齐
   reviewNote?: string
   createdAt: string
   updatedAt?: string

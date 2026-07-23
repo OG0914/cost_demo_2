@@ -213,7 +213,8 @@ export interface CalculateCostResponse extends CostBreakdownDto {
 
 // ==================== 报价单模块 ====================
 export interface CreateQuotationRequest {
-  customerId: string
+  customerId?: string
+  customerName?: string
   regulationId: string
   modelId: string
   packagingConfigId: string

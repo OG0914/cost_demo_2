@@ -130,7 +130,7 @@ export default function CostRecordsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">全部法规</SelectItem>
-                {regulations.map((r) => (
+                {regulations?.map((r) => (
                   <SelectItem key={r.id} value={r.id}>
                     {r.name}
                   </SelectItem>
@@ -176,7 +176,7 @@ export default function CostRecordsPage() {
                       <TableCell>{saleTypeLabels[q.saleType]}</TableCell>
                       <TableCell className="text-right">{q.quantity.toLocaleString()}</TableCell>
                       <TableCell className="text-right font-medium">
-                        ¥{q.costs.totalCost.toLocaleString()}
+                        ¥{q.totalCost.toLocaleString()}
                       </TableCell>
                       <TableCell>
                         <Badge variant={statusConfig[q.status].variant}>

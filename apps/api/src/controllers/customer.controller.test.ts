@@ -44,7 +44,7 @@ describe('CustomerController', () => {
   describe('getList', () => {
     it('should return customer list with search filter', async () => {
       const mockCustomers = {
-        data: [{ id: '1', code: 'C001', name: 'Test Customer', region: 'CN', createdAt: new Date(), updatedAt: new Date(), createdBy: 'user1', updatedBy: 'user1' }],
+        data: [{ id: '1', code: 'C001', name: 'Test Customer', region: 'CN', note: null, salesPersonId: null, createdAt: new Date(), updatedAt: new Date(), createdBy: 'user1', updatedBy: 'user1' }],
         meta: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
       }
       vi.mocked(customerService.getList).mockResolvedValue(mockCustomers)
@@ -78,7 +78,7 @@ describe('CustomerController', () => {
 
   describe('getById', () => {
     it('should return customer by id', async () => {
-      const mockCustomer = { id: '1', code: 'C001', name: 'Test Customer', region: 'CN', createdAt: new Date(), updatedAt: new Date(), createdBy: 'user1', updatedBy: 'user1' }
+      const mockCustomer = { id: '1', code: 'C001', name: 'Test Customer', region: 'CN', note: null, salesPersonId: null, createdAt: new Date(), updatedAt: new Date(), createdBy: 'user1', updatedBy: 'user1' }
       vi.mocked(customerService.getById).mockResolvedValue(mockCustomer)
       mockRequest = { params: { id: '1' } }
 
@@ -110,11 +110,11 @@ describe('CustomerController', () => {
   describe('create', () => {
     it('should create customer with valid data', async () => {
       const input = { code: 'C002', name: 'New Customer', region: 'US', note: 'Test note' }
-      const mockCustomer = { id: '2', ...input, createdAt: new Date(), updatedAt: new Date(), createdBy: 'user1', updatedBy: 'user1' }
+      const mockCustomer = { id: '2', salesPersonId: null, ...input, createdAt: new Date(), updatedAt: new Date(), createdBy: 'user1', updatedBy: 'user1' }
       vi.mocked(customerService.create).mockResolvedValue(mockCustomer)
       mockRequest = {
         body: input,
-        user: { userId: 'user1' },
+        user: { userId: 'user1', username: 'testuser', role: 'admin' },
       }
 
       await controller.create(mockRequest as FastifyRequest, mockReply as FastifyReply)
@@ -135,7 +135,7 @@ describe('CustomerController', () => {
     it('should return 400 for invalid data', async () => {
       mockRequest = {
         body: { code: '', name: '', region: '' },
-        user: { userId: 'user1' },
+        user: { userId: 'user1', username: 'testuser', role: 'admin' },
       }
 
       await controller.create(mockRequest as FastifyRequest, mockReply as FastifyReply)
@@ -153,12 +153,12 @@ describe('CustomerController', () => {
   describe('update', () => {
     it('should update customer with valid data', async () => {
       const input = { name: 'Updated Name', region: 'JP' }
-      const mockCustomer = { id: '1', code: 'C001', name: 'Updated Name', region: 'JP', createdAt: new Date(), updatedAt: new Date(), createdBy: 'user1', updatedBy: 'user1' }
+      const mockCustomer = { id: '1', code: 'C001', name: 'Updated Name', region: 'JP', note: null, salesPersonId: null, createdAt: new Date(), updatedAt: new Date(), createdBy: 'user1', updatedBy: 'user1' }
       vi.mocked(customerService.update).mockResolvedValue(mockCustomer)
       mockRequest = {
         params: { id: '1' },
         body: input,
-        user: { userId: 'user1' },
+        user: { userId: 'user1', username: 'testuser', role: 'admin' },
       }
 
       await controller.update(mockRequest as FastifyRequest, mockReply as FastifyReply)
