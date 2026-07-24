@@ -172,7 +172,7 @@ export default function PendingReviewPage() {
       </div>
 
       {/* 统计信息 */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div data-demo="review-stats" className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">待审核</CardTitle>
@@ -212,7 +212,7 @@ export default function PendingReviewPage() {
           <CardDescription>共 {pendingQuotations.length} 条待审核记录</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
+          <div data-demo="review-table" className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>

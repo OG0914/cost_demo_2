@@ -261,14 +261,14 @@ export default function ProcessesPage() {
                   共 {(processConfigs as ProcessConfig[]).length} 道工序，单件工序成本 ¥{totalProcessCost.toFixed(2)}
                 </CardDescription>
               </div>
-              <Button onClick={handleAdd} disabled={!currentPackagingId}>
+              <Button data-demo="add-button" onClick={handleAdd} disabled={!currentPackagingId}>
                 <Plus className="mr-2 size-4" />
                 添加工序
               </Button>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border">
+            <div data-demo="process-table" className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>

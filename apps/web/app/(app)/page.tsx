@@ -75,7 +75,7 @@ export default function DashboardPage() {
       </div>
 
       {/* 统计卡片 */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div data-demo="kpi-card" className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">报价单总数</CardTitle>
@@ -186,7 +186,7 @@ export default function DashboardPage() {
       {/* 底部区域 */}
       <div className="grid gap-4 lg:grid-cols-2">
         {/* 最近报价单 */}
-        <Card>
+        <Card data-demo="recent-quotations">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle>最近报价单</CardTitle>

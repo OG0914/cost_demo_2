@@ -101,7 +101,7 @@ export default function CostRecordsPage() {
         </CardHeader>
         <CardContent>
           {/* 筛选区域 */}
-          <div className="mb-4 flex flex-wrap items-center gap-3">
+          <div data-demo="status-filter" className="mb-4 flex flex-wrap items-center gap-3">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
               <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -140,7 +140,7 @@ export default function CostRecordsPage() {
           </div>
 
           {/* 表格 */}
-          <div className="rounded-md border">
+          <div data-demo="record-table" className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>

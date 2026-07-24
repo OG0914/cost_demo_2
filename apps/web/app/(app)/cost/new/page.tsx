@@ -240,7 +240,7 @@ export default function NewCostPage() {
 
       <div className="grid gap-6 lg:grid-cols-4">
         {/* 步骤导航 */}
-        <Card className="lg:col-span-1">
+        <Card data-demo="cost-steps" className="lg:col-span-1">
           <CardContent className="p-4">
             <nav className="space-y-1">
               {steps.map((step) => (
@@ -596,7 +596,7 @@ export default function NewCostPage() {
         </div>
 
         {/* 成本预览 */}
-        <Card className="lg:col-span-1 h-fit">
+        <Card data-demo="cost-summary" className="lg:col-span-1 h-fit">
           <CardHeader>
             <CardTitle>成本预览</CardTitle>
             <CardDescription>实时计算结果</CardDescription>
