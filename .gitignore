@@ -48,3 +48,12 @@ tmp/
 
 # Worktrees
 .worktrees/
+
+# Demo video outputs
+demos/
+# Turbo cache
+.turbo/
+
+# Claude local worktrees/skills
+.claude/
+
