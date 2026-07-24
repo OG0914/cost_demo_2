@@ -57,3 +57,8 @@ demos/
 # Claude local worktrees/skills
 .claude/
 
+
+# Temporary local pnpm wrapper
+.pnpm/
+pnpm.cmd
+
