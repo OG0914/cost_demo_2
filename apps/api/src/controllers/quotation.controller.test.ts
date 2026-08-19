@@ -133,6 +133,63 @@ describe('QuotationController', () => {
       expect(quotationService.create).toHaveBeenCalledWith('user1', input)
       expect(mockReply.code).toHaveBeenCalledWith(201)
     })
+
+    it('should create quotation with customerName when no existing customer selected', async () => {
+      const input = {
+        customerName: '新客户公司',  // 未选择已有客户，仅填新客户名
+        regulationId: '00000000-0000-0000-0000-000000000002',
+        modelId: '00000000-0000-0000-0000-000000000003',
+        packagingConfigId: '00000000-0000-0000-0000-000000000004',
+        saleType: 'domestic',
+        shippingType: 'fcl20',
+        quantity: 100,
+        materialCost: 1000,
+        packagingCost: 200,
+        processCost: 300,
+        shippingCost: 400,
+        adminFee: 50,
+        vat: 130,
+        totalCost: 2080,
+      }
+      vi.mocked(quotationService.create).mockResolvedValue({ id: '1', quotationNo: 'QT-2024-0002', status: 'draft' } as unknown as QuotationCreateResult)
+      mockRequest = {
+        body: input,
+        user: { userId: 'user1', username: 'testuser', role: 'admin' },
+      }
+
+      await controller.create(mockRequest as FastifyRequest, mockReply as FastifyReply)
+
+      expect(quotationService.create).toHaveBeenCalledWith('user1', expect.objectContaining({
+        customerName: '新客户公司',
+      }))
+      expect(mockReply.code).toHaveBeenCalledWith(201)
+    })
+
+    it('should return 400 when neither customerId nor customerName is provided', async () => {
+      mockRequest = {
+        body: {
+          regulationId: '00000000-0000-0000-0000-000000000002',
+          modelId: '00000000-0000-0000-0000-000000000003',
+          packagingConfigId: '00000000-0000-0000-0000-000000000004',
+          saleType: 'domestic',
+          shippingType: 'fcl20',
+          quantity: 100,
+          materialCost: 1000,
+          packagingCost: 200,
+          processCost: 300,
+          shippingCost: 400,
+          adminFee: 50,
+          vat: 130,
+          totalCost: 2080,
+        },
+        user: { userId: 'user1', username: 'testuser', role: 'admin' },
+      }
+
+      await controller.create(mockRequest as FastifyRequest, mockReply as FastifyReply)
+
+      expect(quotationService.create).not.toHaveBeenCalled()
+      expect(mockReply.code).toHaveBeenCalledWith(400)
+    })
   })
 
   describe('update', () => {

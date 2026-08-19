@@ -1,6 +1,7 @@
 import { QuotationStatus, type Prisma } from '@cost/database'
 import { BaseService } from './base.service.js'
 import { quotationRepository } from '../repositories/quotation.repository.js'
+import { customerRepository } from '../repositories/customer.repository.js'
 import { sequenceService } from './sequence.service.js'
 import { calculateCosts, type CostCalculationInput, type CostCalculationResult } from '../utils/cost-calculator.js'
 import type { CreateQuotationInput, UpdateQuotationInput } from '../lib/schemas.js'
@@ -60,10 +61,11 @@ export class QuotationService extends BaseService {
 
   async create(userId: string, input: CreateQuotationInput) {
     const quotationNo = await this.generateQuotationNo()
+    const customerId = input.customerId ?? await this.createCustomerByName(userId, input.customerName as string)
 
     const data: Prisma.QuotationCreateInput = {
       quotationNo,
-      customer: { connect: { id: input.customerId } },
+      customer: { connect: { id: customerId } },
       regulation: { connect: { id: input.regulationId } },
       model: { connect: { id: input.modelId } },
       packagingConfig: { connect: { id: input.packagingConfigId } },
@@ -82,6 +84,21 @@ export class QuotationService extends BaseService {
     }
 
     return quotationRepository.create(data)
+  }
+
+  // 按名称快速建档新客户，返回客户ID；region 占位为「未填写」，可在客户管理页补全
+  private async createCustomerByName(userId: string, name: string): Promise<string> {
+    const year = new Date().getFullYear()
+    const prefix = `CUST-${year}`
+    const seq = await sequenceService.nextNumber(prefix)
+    const customer = await customerRepository.create({
+      code: `${prefix}-${seq.toString().padStart(4, '0')}`,
+      name,
+      region: '未填写',
+      createdByUser: { connect: { id: userId } },
+      updatedByUser: { connect: { id: userId } },
+    })
+    return customer.id
   }
 
   async update(id: string, input: UpdateQuotationInput) {

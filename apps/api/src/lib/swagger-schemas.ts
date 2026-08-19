@@ -256,6 +256,7 @@ export const quotationSchema = {
   type: 'object',
   properties: {
     id: { type: 'string', format: 'uuid' },
+    quotationNo: { type: 'string', description: '报价编号' },
     customerId: { type: 'string', format: 'uuid', description: '客户ID' },
     regulationId: { type: 'string', format: 'uuid', description: '法规ID' },
     modelId: { type: 'string', format: 'uuid', description: '型号ID' },
@@ -274,14 +275,51 @@ export const quotationSchema = {
     createdBy: { type: 'string', format: 'uuid', description: '创建人ID' },
     createdAt: { type: 'string', format: 'date-time' },
     updatedAt: { type: 'string', format: 'date-time' },
+    reviewedBy: { type: 'string', format: 'uuid', nullable: true, description: '审核人ID' },
+    reviewedAt: { type: 'string', format: 'date-time', nullable: true, description: '审核时间' },
+    reviewNote: { type: 'string', nullable: true, description: '审核意见' },
+    customer: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', format: 'uuid' },
+        code: { type: 'string' },
+        name: { type: 'string' },
+        region: { type: 'string' },
+      },
+    },
+    regulation: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', format: 'uuid' },
+        name: { type: 'string' },
+      },
+    },
+    model: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', format: 'uuid' },
+        name: { type: 'string' },
+        series: { type: 'string', nullable: true },
+        category: { type: 'string' },
+      },
+    },
+    packagingConfig: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', format: 'uuid' },
+        name: { type: 'string' },
+      },
+    },
   },
 } as const
 
 export const createQuotationRequestSchema = {
   type: 'object',
-  required: ['customerId', 'regulationId', 'modelId', 'packagingConfigId', 'saleType', 'shippingType', 'quantity', 'materialCost', 'packagingCost', 'processCost', 'shippingCost', 'adminFee', 'vat', 'totalCost'],
+  anyOf: [{ required: ['customerId'] }, { required: ['customerName'] }],  // 已有客户ID 与新客户名称二选一
+  required: ['regulationId', 'modelId', 'packagingConfigId', 'saleType', 'shippingType', 'quantity', 'materialCost', 'packagingCost', 'processCost', 'shippingCost', 'adminFee', 'vat', 'totalCost'],
   properties: {
     customerId: { type: 'string', format: 'uuid', description: '客户ID' },
+    customerName: { type: 'string', minLength: 1, maxLength: 100, description: '新客户名称（自动建档）' },
     regulationId: { type: 'string', format: 'uuid', description: '法规ID' },
     modelId: { type: 'string', format: 'uuid', description: '型号ID' },
     packagingConfigId: { type: 'string', format: 'uuid', description: '包装配置ID' },

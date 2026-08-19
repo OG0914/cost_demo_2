@@ -144,7 +144,8 @@ export const saleTypeSchema = z.enum(['domestic', 'export'])
 export const shippingTypeSchema = z.enum(['fcl20', 'fcl40', 'lcl'])
 
 export const createQuotationSchema = z.object({
-  customerId: idSchema,
+  customerId: idSchema.optional(),  // 二选一：已有客户ID
+  customerName: z.string().min(1, '客户名称不能为空').max(100, '客户名称最多100字符').optional(),  // 二选一：新客户名称（自动建档）
   regulationId: idSchema,
   modelId: idSchema,
   packagingConfigId: idSchema,
@@ -158,6 +159,9 @@ export const createQuotationSchema = z.object({
   adminFee: positiveDecimalSchema,
   vat: positiveDecimalSchema,
   totalCost: positiveDecimalSchema,
+}).refine((data) => data.customerId || data.customerName, {
+  message: '请选择已有客户或填写新客户名称',
+  path: ['customerId'],
 })
 
 export const updateQuotationSchema = z.object({

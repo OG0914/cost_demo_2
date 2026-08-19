@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { QuotationService } from './quotation.service.js'
 import { quotationRepository } from '../repositories/quotation.repository.js'
+import { customerRepository } from '../repositories/customer.repository.js'
 import { sequenceService } from '../services/sequence.service.js'
 import type { CreateQuotationInput } from '../lib/schemas.js'
 import type { CostCalculationInput } from '../utils/cost-calculator.js'
@@ -16,6 +17,12 @@ vi.mock('../repositories/quotation.repository.js', () => ({
     update: vi.fn(),
     updateWithReviewer: vi.fn(),
     delete: vi.fn(),
+  },
+}))
+
+vi.mock('../repositories/customer.repository.js', () => ({
+  customerRepository: {
+    create: vi.fn(),
   },
 }))
 
@@ -131,6 +138,41 @@ describe('QuotationService', () => {
         quotationNo: expect.stringMatching(/QT-\d{4}-\d{4}/),
         status: 'draft',
         creator: { connect: { id: 'user1' } },
+      }))
+    })
+
+    it('should auto-create customer when only customerName is provided', async () => {
+      const input: CreateQuotationInput = {
+        customerName: '新客户公司',  // 未选择已有客户，仅填新客户名
+        regulationId: 'reg1',
+        modelId: 'model1',
+        packagingConfigId: 'pack1',
+        saleType: 'domestic',
+        shippingType: 'fcl20',
+        quantity: 100,
+        materialCost: 1000,
+        packagingCost: 200,
+        processCost: 300,
+        shippingCost: 400,
+        adminFee: 50,
+        vat: 130,
+        totalCost: 2080,
+      }
+      vi.mocked(sequenceService.nextNumber).mockResolvedValue(1)
+      vi.mocked(customerRepository.create).mockResolvedValue({ id: 'new-cust-id' } as never)
+      vi.mocked(quotationRepository.create).mockResolvedValue({ id: '1' } as never)
+
+      await service.create('user1', input)
+
+      const year = new Date().getFullYear()
+      expect(customerRepository.create).toHaveBeenCalledWith(expect.objectContaining({
+        code: `CUST-${year}-0001`,
+        name: '新客户公司',
+        createdByUser: { connect: { id: 'user1' } },
+        updatedByUser: { connect: { id: 'user1' } },
+      }))
+      expect(quotationRepository.create).toHaveBeenCalledWith(expect.objectContaining({
+        customer: { connect: { id: 'new-cust-id' } },
       }))
     })
   })
