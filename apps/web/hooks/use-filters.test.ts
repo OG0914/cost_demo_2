@@ -17,6 +17,17 @@ describe('useListFilters', () => {
     expect(result.current.searchTerm).toBe('')
   })
 
+  it('should return all items when search field is missing on rows and search term is empty', () => {
+    // 回归：响应 schema 裁剪导致行缺 quotationNo 时，空搜索不应把全部行过滤掉
+    const rows: Array<{ id: string; quotationNo?: string }> = [
+      { id: '1' },
+      { id: '2' },
+    ]
+    const { result } = renderHook(() => useListFilters(rows, ['quotationNo']))
+
+    expect(result.current.filteredItems).toHaveLength(2)
+  })
+
   it('should filter items by search term', () => {
     const { result } = renderHook(() => useListFilters(mockItems, ['name']))
 

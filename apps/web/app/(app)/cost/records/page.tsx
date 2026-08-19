@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import {
   Plus,
@@ -44,6 +45,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog'
+import { formatDateTime } from '@/lib/format'
+import type { Quotation } from '@cost/shared-types'
 import type { QuotationStatus } from '@/lib/types'
 import { useListFilters } from '@/hooks/forms/use-filters'
 import { useQuotations } from '@/hooks/api/use-quotations'
@@ -62,8 +66,9 @@ const saleTypeLabels = {
 }
 
 export default function CostRecordsPage() {
-  const { quotations, isLoading } = useQuotations()
+  const { quotations, isLoading, delete: deleteQuotation, isDeleting } = useQuotations()
   const { regulations } = useRegulations()
+  const [deleteTarget, setDeleteTarget] = useState<Quotation | null>(null)  // 待删除的报价单
   const { searchTerm, setSearchTerm, filters, setFilter, filteredItems: filteredQuotations } = useListFilters(
     quotations || [],
     ['quotationNo']
@@ -183,7 +188,7 @@ export default function CostRecordsPage() {
                           {statusConfig[q.status].label}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{q.createdAt}</TableCell>
+                      <TableCell className="text-muted-foreground">{formatDateTime(q.createdAt)}</TableCell>
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -213,7 +218,10 @@ export default function CostRecordsPage() {
                               </>
                             )}
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive">
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => setDeleteTarget(q)}
+                            >
                               <Trash2 className="mr-2 size-4" />
                               删除
                             </DropdownMenuItem>
@@ -228,6 +236,17 @@ export default function CostRecordsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <ConfirmDeleteDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        description={`确定删除报价单 ${deleteTarget?.quotationNo ?? ''} 吗？此操作不可恢复。`}
+        loading={isDeleting}
+        onConfirm={() => {
+          if (!deleteTarget) return
+          deleteQuotation(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) })
+        }}
+      />
     </div>
   )
 }

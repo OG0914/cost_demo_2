@@ -20,8 +20,8 @@ export function useListFilters<T extends Record<string, any>>(
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
-      // 搜索匹配
-      const matchesSearch = searchFields.some((field) => {
+      // 搜索匹配（空搜索词一律放行，避免字段缺失时误过滤全部行）
+      const matchesSearch = !searchTerm || searchFields.some((field) => {
         const value = item[field]
         return (
           typeof value === 'string' &&
