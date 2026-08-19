@@ -1,9 +1,9 @@
 # Handoff 文档
 
-> **最后更新**: 2026-07-01
-> **交接人**: 八月团队 (Claude 4.6)
+> **最后更新**: 2026-08-19
+> **交接人**: 八月团队 (Claude Fable 5)
 > **项目**: cost_demo_2 - 成本核算管理系统 v2
-> **状态**: 🚧 前端类型债修复已实施完成，待 Lucas 运行态审查通过后提交
+> **状态**: ✅ 方案A（4 个遗留缺陷修复）已提交于 worktree 分支 `fix/quote-save-and-auth`（3 commits），待 Lucas 终审后合并 main；下一项：计算规则对齐计划
 
 ---
 
@@ -25,11 +25,14 @@ system 页面:    ✅ 已迁移到真实 API
 包材关联原料:  ✅ 已提交并推送 main (`ece8942`)
 BOM 复制功能:   ✅ 已接真实 API（`POST /api/v1/bom/copy`）
 登录页自动刷新: ✅ 已修复（切换 webpack 后稳定）
-前端类型债修复: ✅ 已实施完成（13 个文件），待运行态审查后提交
-后端服务:      ✅ 运行中 (http://localhost:3000)
+前端类型债修复: ✅ 已提交（`6e1dfc6`）
+方案A 缺陷修复: ✅ 3 commits 于 worktree 分支 fix/quote-save-and-auth，待合并 main
+后端测试:      ✅ 146/146 通过（+10 新增）
+前端测试:      ✅ 60/60 通过（+1 新增）
+后端服务:      ✅ 运行中 (http://localhost:3000，worktree)
 前端服务:      ✅ 运行中 (http://localhost:5174，webpack 模式)
 数据迁移:      ⚠️ 重新 seed 后真实数据已清空，需重新迁移
-本地 PostgreSQL: ✅ Docker 容器运行中
+本地 PostgreSQL: ✅ 运行中（Lucas 手动启动）
 ```
 
 ### 当前重点任务（2026-06-29 ~ 2026-07-01）
@@ -39,7 +42,41 @@ BOM 复制功能:   ✅ 已接真实 API（`POST /api/v1/bom/copy`）
 | **Task 1: 产品系列/分类改为系统配置维护** | ✅ 已提交 (`9298246`) | `system/page.tsx` 已引入 `ModelDictionaryConfig`，`models/page.tsx` 已读取 SystemConfig |
 | **Task 2: BOM 复制功能完整实现** | ✅ 已完成 | 前端 `bom/page.tsx` 已调用真实 `POST /api/v1/bom/copy`；后端 copy 端点与 service 测试已存在并验证通过 |
 | **Task 3: 标准包装类型复刻 + 包材关联原料 + 运费计算** | ✅ 已提交并推送 main (`ece8942`) | `PackagingMaterial` 关联 `Material` 表；新增 4 种标准包装类型、层级计算、boxVolume、LCL/FCL 运费；前端包装配置页/型号管理同步完成 |
-| **Task 4: 前端类型债修复（扁平 Quotation + 运行时 bug 修复）** | ✅ 已实施完成，待审查提交 | 补全 `@cost/shared-types` 的 `Quotation`/`PackagingConfig`，13 个文件 `q.costs.X → q.X`；修复 `cost/new` 选择型号后包装配置不加载、下一步禁用问题；前端 typecheck 0 错误、测试 59 passed、后端 136 passed |
+| **Task 4: 前端类型债修复（扁平 Quotation + 运行时 bug 修复）** | ✅ 已提交 (`6e1dfc6`) | 补全 `@cost/shared-types` 的 `Quotation`/`PackagingConfig`，13 个文件 `q.costs.X → q.X`；修复 `cost/new` 选择型号后包装配置不加载、下一步禁用问题；前端 typecheck 0 错误、测试 59 passed、后端 136 passed |
+
+---
+
+## ✅ 方案A：4 个遗留缺陷修复（2026-08-19）
+
+在 `.worktrees/fix-quote-save` worktree（分支 `fix/quote-save-and-auth`）完成，共 11 个文件（+396/-11），拆 3 个 commit，**待 Lucas 终审后合并 main**：
+
+| Commit | 内容 |
+|--------|------|
+| `a52e8ca` | fix(api): system-config 路由补充鉴权中间件（2 文件，+71/-3） |
+| `e9833e7` | fix(api): 报价单支持按客户名称创建并补全响应 schema（6 文件，+290/-3） |
+| `6579bde` | fix(web): 成本记录页接入删除功能并本地化时间显示（3 文件，+35/-5） |
+
+### 根因与修复
+
+1. **P0 安全缺口**：`system-config.routes.ts` 3 个端点未挂任何鉴权（全系统 60+ 端点唯独它们裸奔）→ 补 `onRequest: [app.authenticate]`。未加 `requireRole('admin')`，因型号字典等非 admin 角色也在用。
+2. **报价单保存失败（customerName）**：Zod（`schemas.ts`）与路由 JSON Schema（`swagger-schemas.ts`）双份定义均改为 customerId/customerName 二选一；`quotation.service.ts` 新增 `createCustomerByName()` 自动建档（编号 `CUST-年-序号`，region 占位「未填写」可后补）。
+3. **成本记录页空白（连环案）**：真凶是 Fastify 响应 schema（`quotationSchema`）漏声明 `quotationNo` 与关联对象，fast-json-stringify 序列化时裁字段；前端 `useListFilters` 空搜索词仍要求字段为 string，误过滤全部行放大问题。已补全 schema + 空搜索放行 + 路由级 inject 回归测试（单测抓不到序列化层问题）。
+4. **无法删除 + 时间非北京时间**：删除菜单项无 onClick（死按钮）→ 接 `ConfirmDeleteDialog` + delete mutation；`createdAt` 原始 ISO → `formatDateTime` 本地化（浏览器时区即北京时间）。
+
+### 验证结果
+
+| 检查项 | 结果 |
+|---|---|
+| 后端测试 | **146/146**（+10） |
+| 前端测试 | **60/60**（+1） |
+| typecheck / lint | 6/6、4/4 全绿 |
+| 运行态实证 | records 页有数据；customerName E2E 创建 QT-2026-0007 + 自动建档 CUST-2026-0001（测试数据已清理） |
+
+### 已知遗留
+
+- 成本记录列表页「提交审核」菜单项同为死按钮（无 onClick），Lucas 确认暂缓；草稿单从详情页提交。审核流转无需预设审核人：submit 仅置 `status=submitted` 进待审核池，reviewer/admin 在 `/review/pending` 处理时记录 `reviewedBy`。
+- 历史报价单可能存在 saleType=export 但 vat>0 的旧数据不一致，优先判定为旧数据问题。
+- 删除后端规则：approved 不可删（INVALID_STATUS），draft/submitted/rejected 可删。
 
 ---
 
@@ -293,7 +330,7 @@ pnpm dev:web  # 前端
 ## 关键文件位置
 
 ```
-项目根目录: E:/desktop/cost_demo_2
+项目根目录: D:/Desktop/cost_demo_2
 
 后端:
   - apps/api/.env                    # 数据库配置
@@ -498,6 +535,10 @@ cd apps/api && pnpm test
 
 ## 下一步任务
 
+### 🔴 下一项大工程（方案A完成后启动）
+
+0. **计算规则对齐** — 按计划 `docs/plans/2026-07-25-calculation-rules-alignment.md` 执行：schema 迁移（`Material.calcType/postAdmin`、`Quotation.shippingTerms`）+ `cost-calculator.ts` 重写（multiply/divide 系数、工价系数、管销价除法、内外销、利润 4 档）+ 文档 §10 两个完整示例黄金测试。
+
 ### 🟡 中优先级（代码整洁度与类型安全）
 
 1. **拆分臃肿页面组件** (3小时)
@@ -630,23 +671,10 @@ cd apps/api && pnpm test
 - ⚠️ **2026-06-23 重新 seed 后，此前迁移的真实业务数据（29 条 quotations 等）已被清空，如需恢复请重新运行迁移脚本**
 - ✅ 端口配置已修复 (3003→3000)
 - ✅ API 服务运行中 (`http://localhost:3000`)
-- ✅ API 测试 `136/136` 通过
-- ✅ 前端 typecheck **0 错误**（本次修复后）
-- ✅ 前端测试 **59/59** 通过
-- ⚠️ 以下改动已完成但未 commit，等待 Lucas 运行态审查：
-  - `packages/shared-types/src/index.ts`
-  - `packages/shared-types/src/api.ts`
-  - `apps/web/app/(app)/cost/[id]/page.tsx`
-  - `apps/web/app/(app)/cost/compare/page.tsx`
-  - `apps/web/app/(app)/cost/new/page.tsx`
-  - `apps/web/app/(app)/cost/records/page.tsx`
-  - `apps/web/app/(app)/review/pending/page.tsx`
-  - `apps/web/app/(app)/review/completed/page.tsx`
-  - `apps/web/app/(app)/notifications/page.tsx`
-  - `apps/web/app/(app)/master/processes/page.tsx`
-  - `apps/web/components/error-boundary.tsx`
-  - `apps/web/hooks/api/use-bom.ts`
-  - `apps/web/hooks/use-quotations.test.ts`
+- ✅ API 测试 `146/146` 通过（2026-08-19）
+- ✅ 前端 typecheck **0 错误**
+- ✅ 前端测试 **60/60** 通过（2026-08-19）
+- ✅ Task 4 前端类型债修复已提交（`6e1dfc6`），原「待 commit 13 文件」清单已随其入库
 
 ### 最近修改（未提交，2026-07-01）
 
@@ -700,6 +728,18 @@ cd apps/api && pnpm test
 ### 最近提交
 
 ```
+commit 6579bde  (worktree 分支 fix/quote-save-and-auth，待合并 main)
+@ fix(web): 成本记录页接入删除功能并本地化时间显示
+
+commit e9833e7  (同上)
+@ fix(api): 报价单支持按客户名称创建并补全响应 schema
+
+commit a52e8ca  (同上)
+@ fix(api): system-config 路由补充鉴权中间件
+
+commit 6e1dfc6
+@ fix(type-debt): 修复 Quotation 类型债务并同步测试
+
 commit ece8942
 @ feat: 复刻旧系统标准包装类型与运费计算
 
