@@ -461,10 +461,10 @@ pnpm test
 
 ## Project-Level Skills & Hooks
 
-项目根目录包含本地 skills 和 hooks：
+项目本地 skills 和 hooks 位于 `.claude/` 目录（`.agents/skills/` 为同步镜像，供其他 AI 工具使用）：
 
 ```
-skills/          # 25个本地化 Skills
+.claude/skills/  # 28 个本地化 Skills
 ├── brainstorming/
 ├── test-driven-development/
 ├── react-best-practices/
@@ -472,7 +472,7 @@ skills/          # 25个本地化 Skills
 ├── postgresql-table-design/
 └── ...
 
-hooks/           # 自动化工具
+.claude/hooks/   # 自动化工具
 ├── skill-activation.py      # 自动推荐项目级 Skills
 ├── insight-capture.js       # 记录项目经验教训
 ├── experience-promoter.js   # 经验级别自动晋升
@@ -482,10 +482,10 @@ hooks/           # 自动化工具
 **使用示例**:
 ```bash
 # 记录项目经验
-node hooks/insight-capture.js create "场景" "问题" "解决方案"
+node .claude/hooks/insight-capture.js create "场景" "问题" "解决方案"
 
 # 测试 skill 触发
-echo '{"prompt": "帮我debug报价单"}' | python hooks/skill-activation.py
+echo '{"prompt": "帮我debug报价单"}' | python .claude/hooks/skill-activation.py
 ```
 
 ## Known Issues
