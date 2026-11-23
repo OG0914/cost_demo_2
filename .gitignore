@@ -57,6 +57,10 @@ demos/
 # Claude local worktrees/skills
 .claude/
 
+# Agent 工具链本地配置（AGENTS.md 是 CLAUDE.md 的派生副本，权威源为 CLAUDE.md）
+.agents/
+AGENTS.md
+
 
 # Temporary local pnpm wrapper
 .pnpm/

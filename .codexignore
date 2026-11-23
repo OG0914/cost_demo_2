@@ -1,0 +1,33 @@
+# Codex 上下文排除文件
+# 排除大目录和不需要分析的文件
+
+# Claude worktrees (大量重复文件)
+.claude/
+
+# 依赖目录
+node_modules/
+
+# 构建产物
+.next/
+dist/
+out/
+coverage/
+
+# 大型生成文件
+packages/database/generated/
+*.lock
+pnpm-lock.yaml
+
+# 日志和临时文件
+*.log
+.tmp/
+temp/
+
+# 补丁文件（如果不需要分析）
+*.patch
+
+# 内存和经验文件
+.memory/
+
+# 文档（如果不需要分析）
+docs/
