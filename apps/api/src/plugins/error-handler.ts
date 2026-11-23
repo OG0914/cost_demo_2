@@ -53,12 +53,45 @@ const errorCodeToStatusMap: Record<ErrorCode, number> = {
   [ErrorCode.TIMEOUT_ERROR]: 504,
 }
 
+// 外键约束名 → 可操作的提示（删除被引用数据时使用）
+// 约束名取自数据库 pg_constraint；新增 Restrict 关系时需同步本表
+const foreignKeyDeleteHints: Record<string, string> = {
+  packaging_materials_material_id_fkey: '该原材料仍被包装配置引用，请先在包装配置中移除该材料',
+  notifications_material_id_fkey: '该原材料仍有价格变更通知，请先处理相关通知',
+  quotations_customer_id_fkey: '该客户仍被报价单引用，请先处理相关报价单',
+  quotations_regulation_id_fkey: '该法规仍被报价单引用，请先处理相关报价单',
+  models_regulation_id_fkey: '该法规仍被型号引用，请先解除型号关联',
+  quotations_model_id_fkey: '该型号仍被报价单引用，请先处理相关报价单',
+  quotations_packaging_config_id_fkey: '该包装配置仍被报价单引用，请先处理相关报价单',
+  customers_created_by_fkey: '该用户仍被客户记录引用',
+  customers_updated_by_fkey: '该用户仍被客户记录引用',
+  quotations_created_by_fkey: '该用户仍被报价单引用',
+  standard_costs_set_by_fkey: '该用户仍被标准成本引用',
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+/** 从 Prisma 外键错误的 meta 中返回可操作的删除失败提示 */
+function foreignKeyDeleteHint(error: unknown): string {
+  const meta = isRecord(error) && isRecord(error.meta) ? error.meta : null
+  // Prisma 6 对 Postgres 返回约束名在 meta.constraint；部分驱动/版本用 meta.field_name
+  const constraintName =
+    meta && typeof meta.constraint === 'string'
+      ? meta.constraint
+      : meta && typeof meta.field_name === 'string'
+        ? meta.field_name
+        : ''
+  return foreignKeyDeleteHints[constraintName] ?? '该记录仍被其他业务数据引用，请先解除引用后再删除'
+}
+
 // Prisma 错误码映射
 const prismaErrorMap: Record<string, { code: ErrorCode; message: string }> = {
   P2000: { code: ErrorCode.VALIDATION_ERROR, message: '输入数据超出字段长度限制' },
   P2001: { code: ErrorCode.DB_RECORD_NOT_FOUND, message: '查询的记录不存在' },
   P2002: { code: ErrorCode.DB_UNIQUE_VIOLATION, message: '记录已存在（唯一约束冲突）' },
-  P2003: { code: ErrorCode.DB_FOREIGN_KEY_VIOLATION, message: '外键约束失败' },
+  P2003: { code: ErrorCode.DB_FOREIGN_KEY_VIOLATION, message: '引用的关联数据不存在或已被删除' },
   P2004: { code: ErrorCode.DB_QUERY_ERROR, message: '数据库约束失败' },
   P2005: { code: ErrorCode.VALIDATION_ERROR, message: '字段值无效' },
   P2006: { code: ErrorCode.VALIDATION_ERROR, message: '提供的字段值无效' },
@@ -159,6 +192,12 @@ export const errorHandler = fp(async (fastify: FastifyInstance) => {
       } else {
         errorResponse.error.code = ErrorCode.DB_QUERY_ERROR
         errorResponse.error.message = '数据库操作失败'
+      }
+
+      // 删除时撞上外键约束属于业务冲突（409），且必须说清被什么引用
+      if ((error.code === 'P2003' || error.code === 'P2014') && request.method === 'DELETE') {
+        errorResponse.error.code = ErrorCode.RESOURCE_CONFLICT
+        errorResponse.error.message = foreignKeyDeleteHint(error)
       }
 
       // 记录数据库错误

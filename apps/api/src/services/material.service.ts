@@ -1,4 +1,5 @@
 import { BaseService } from './base.service.js'
+import { createError } from '../plugins/error-handler.js'
 import { materialRepository, type MaterialFilter, type PaginationParams } from '../repositories/material.repository.js'
 import type { CreateMaterialInput, UpdateMaterialInput } from '../lib/schemas.js'
 import type { Prisma } from '@cost/database'
@@ -85,6 +86,31 @@ export class MaterialService extends BaseService {
     const existing = await this.repository.findById(id)
     if (!existing) {
       throw new Error('NOT_FOUND')
+    }
+
+    // 删除前先查引用：包装配置（Restrict）、BOM（Cascade，静默删会丢成本结构）、价格变更通知（Restrict）
+    const [packagingRefs, bomCount, notificationCount] = await Promise.all([
+      this.prisma.packagingMaterial.findMany({
+        where: { materialId: id },
+        select: { packagingConfig: { select: { name: true } } },
+      }),
+      this.prisma.bomMaterial.count({ where: { materialId: id } }),
+      this.prisma.notification.count({ where: { materialId: id } }),
+    ])
+
+    if (packagingRefs.length > 0 || bomCount > 0 || notificationCount > 0) {
+      const configNames = packagingRefs.map((ref) => ref.packagingConfig.name)
+      const references: string[] = []
+
+      if (configNames.length > 0) {
+        const shown = configNames.slice(0, 2).join('、')
+        const suffix = configNames.length > 2 ? ' 等' : ''
+        references.push(`${configNames.length} 个包装配置（${shown}${suffix}）`)
+      }
+      if (bomCount > 0) references.push(`${bomCount} 条 BOM`)
+      if (notificationCount > 0) references.push(`${notificationCount} 条价格变更通知`)
+
+      throw createError.conflict(`无法删除：该原材料仍被引用——${references.join('、')}，请先解除引用后再删除`)
     }
 
     await this.repository.delete(id)

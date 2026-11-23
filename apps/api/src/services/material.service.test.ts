@@ -20,9 +20,10 @@ vi.mock('../repositories/material.repository.js', () => ({
 vi.mock('@cost/database', () => {
   const mockPrisma = {
     material: { update: vi.fn() },
-    bomMaterial: { findMany: vi.fn() },
+    bomMaterial: { findMany: vi.fn(), count: vi.fn() },
     packagingConfig: { findMany: vi.fn() },
-    notification: { create: vi.fn() },
+    packagingMaterial: { findMany: vi.fn() },
+    notification: { create: vi.fn(), count: vi.fn() },
   }
   return {
     prisma: {
@@ -192,6 +193,9 @@ describe('MaterialService', () => {
     it('should delete material when found', async () => {
       const existingMaterial = { id: '1', materialNo: 'M001' } as never
       vi.mocked(materialRepository.findById).mockResolvedValue(existingMaterial as never)
+      vi.mocked(prisma.packagingMaterial.findMany).mockResolvedValue([])
+      vi.mocked(prisma.bomMaterial.count).mockResolvedValue(0)
+      vi.mocked(prisma.notification.count).mockResolvedValue(0)
       vi.mocked(materialRepository.delete).mockResolvedValue({ id: '1', materialNo: 'M001' } as Awaited<ReturnType<typeof materialRepository.delete>>)
 
       await service.delete('1')
@@ -203,6 +207,32 @@ describe('MaterialService', () => {
       vi.mocked(materialRepository.findById).mockResolvedValue(null)
 
       await expect(service.delete('999')).rejects.toThrow('NOT_FOUND')
+    })
+
+    it('should refuse delete and name the packaging configs that reference the material', async () => {
+      vi.mocked(materialRepository.findById).mockResolvedValue({ id: '1', materialNo: 'M001' } as never)
+      vi.mocked(prisma.packagingMaterial.findMany).mockResolvedValue([
+        { packagingConfig: { name: '半面罩-标准箱' } },
+        { packagingConfig: { name: '口罩-标准箱' } },
+        { packagingConfig: { name: '配件-小箱' } },
+      ] as never)
+      vi.mocked(prisma.bomMaterial.count).mockResolvedValue(0)
+      vi.mocked(prisma.notification.count).mockResolvedValue(0)
+
+      await expect(service.delete('1')).rejects.toThrow(
+        '无法删除：该原材料仍被引用——3 个包装配置（半面罩-标准箱、口罩-标准箱 等），请先解除引用后再删除'
+      )
+      expect(materialRepository.delete).not.toHaveBeenCalled()
+    })
+
+    it('should refuse delete when the material is still used by BOM or notifications', async () => {
+      vi.mocked(materialRepository.findById).mockResolvedValue({ id: '1', materialNo: 'M001' } as never)
+      vi.mocked(prisma.packagingMaterial.findMany).mockResolvedValue([])
+      vi.mocked(prisma.bomMaterial.count).mockResolvedValue(2)
+      vi.mocked(prisma.notification.count).mockResolvedValue(1)
+
+      await expect(service.delete('1')).rejects.toThrow(/2 条 BOM.*1 条价格变更通知/)
+      expect(materialRepository.delete).not.toHaveBeenCalled()
     })
   })
 })
