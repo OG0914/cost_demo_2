@@ -45,6 +45,15 @@ cp apps/api/.env.example apps/api/.env
 cp packages/database/prisma/.env.example packages/database/prisma/.env
 ```
 
+本机未安装 PostgreSQL 时可用容器（注意 `.env` 中的库名与密码要一致）：
+
+```bash
+docker run -d --name cost-pg \
+  -e POSTGRES_PASSWORD=<与 .env 一致> \
+  -e POSTGRES_DB=cost_analysis_new \
+  -p 5432:5432 postgres:16-alpine
+```
+
 编辑 `.env` 文件配置数据库连接：
 
 ```
@@ -69,8 +78,8 @@ pnpm db:seed
 pnpm dev
 
 # 或分别启动
-pnpm dev:api  # 后端 http://localhost:3001
-pnpm dev:web  # 前端 http://localhost:3000
+pnpm dev:api  # 后端 http://localhost:3000
+pnpm dev:web  # 前端 http://localhost:5174
 ```
 
 ### 5. 默认登录账号
@@ -99,7 +108,7 @@ pnpm typecheck        # 类型检查
 
 ## API 文档
 
-后端 API 运行在 `http://localhost:3001/api/v1`
+后端 API 运行在 `http://localhost:3000/api/v1`
 
 主要端点：
 
