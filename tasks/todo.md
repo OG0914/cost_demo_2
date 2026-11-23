@@ -19,6 +19,16 @@
 
 ## 已完成 ✅
 
+### Task-17: 删除被引用数据时不再返回无语义的 400
+- **完成时间**: 2026-11-23
+- **背景**: 运行态复核时发现原料页删除全部失败，控制台两条 toast：「数据关联错误，请先删除关联数据」+「外键约束失败」，HTTP 400。根源是删除父记录时只有数据库外键在拦，错误处理器把 Prisma P2003 一律映射成 400 + 原始文案。
+- **处理**:
+  - `material.service.delete()` 增加引用审计：包装配置（Restrict）、BOM（Cascade，静默删会丢成本结构）、价格变更通知（Restrict），命中就招 409 并列出具体引用数/名称
+  - `error-handler` 新增反向映射：任何 `DELETE` 撞上 P2003/P2014 → 409 `RESOURCE_CONFLICT`，按约束名（`meta.constraint`）给出可操作提示；非 DELETE 仍为 400（引用的关联数据不存在）
+  - 约束名→提示对应表取自数据库 `pg_constraint` 实际值（11 条 Restrict 关系）
+- **验证**: 后端 152/152（+5）、前端 60/60、两端 `tsc --noEmit` 0 错；运行态实测：删耳带→409「1 个包装配置（N-95 泡壳直装）、1 条 BOM」，删被型号引用的法规→409「该法规仍被型号引用」，新建→改价→删除无引用原料均 200
+- **经验**: 见 `tasks/lessons.md` L006
+
 ### Task-16: 反向改动收尾、全量鉴权门禁与仓库清理
 - **完成时间**: 2026-11-23
 - **背景**: main 暂存区存在一批**反向补丁**，把 Task-14 的修复整体回退——system-config 三端点摘掉 `authenticate`、`use-filters` 去掉空搜索放行、删除 3 个测试文件。测试数从 146/60 掉到 136/59，但 `pnpm test` 全绿。
@@ -102,6 +112,7 @@
 
 ## 遗留问题
 
+- **删除失败提示重复 toast**：`lib/api.ts` 拦截器与各 hook 的 `onError` 各弹一次，同一错误会出现两条提示。共 39 处 `toast.error(error.message...)` 分布在 11 个 hook，应先统一成单一 toast 出口（或给 sonner 传固定 `id`）再改，属于独立重构。
 - **「提交审核」死按钮**：成本记录列表页该菜单项无 onClick（`records/page.tsx`），草稿单目前需从详情页提交。已与 Lucas 确认暂缓。审核流转本身无需预设审核人（submit 仅置 status=submitted，进 /review/pending 待审核池，reviewer/admin 角色处理时记录 reviewedBy）。
 - **计算规则对齐计划**（`docs/plans/2026-07-25-calculation-rules-alignment.md`）：方案A 完成后的下一项大工程，含 schema 迁移（Material.calcType/postAdmin、Quotation.shippingTerms）+ 计算引擎重写 + 黄金测试。
 - **旧报价单外销 VAT 数据不一致**：历史数据可能存在 saleType=export 但 vat>0，优先判定为旧数据问题。
